@@ -5,14 +5,14 @@ export const POST = async (req) => {
   try {
     const { username, password } = await req.json();
 
-    // 🔹 Environment-aware API base
-    const apiBase = process.env.DOCKER_ENV === "true"
-      ? process.env.DOCKER_INTERNAL_API_BASE // SSR / Docker internal
-      : process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000/api";
-      
+    // Environment-aware API base
+    const apiBase =
+      process.env.DOCKER_ENV === "true"
+        ? process.env.DOCKER_INTERNAL_API_BASE // SSR / Docker internal
+        : process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 
-      
-    const loginUrl = `${apiBase}/admin-token/`;
+    // Remove extra /api if present
+    const loginUrl = `${apiBase.replace(/\/$/, "")}/admin-token/`;
 
     console.log("🔍 Login URL:", loginUrl);
 
@@ -38,7 +38,7 @@ export const POST = async (req) => {
       return NextResponse.json({
         success: true,
         token: data.token,
-        redirect: "/admin/chat",
+        redirect: "/admin-chat/chat",
       });
     } else {
       return NextResponse.json(

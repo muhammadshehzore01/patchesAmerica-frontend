@@ -1,6 +1,7 @@
-// frontend\src\app\admin\login\page.jsx
 "use client";
+
 import { useState } from "react";
+import { loginAdmin } from "@/lib/api"; // 🔥 use centralized function
 
 export default function AdminLogin() {
   const [error, setError] = useState("");
@@ -15,48 +16,48 @@ export default function AdminLogin() {
     const password = e.target.password.value;
 
     try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
+      const data = await loginAdmin(username, password);
       setLoading(false);
 
-      if (data.success) {
-        localStorage.setItem("adminToken", data.token);
-        window.location.href = data.redirect;
-      } else {
-        setError(data.error);
+      if (data.token) {
+        // Redirect to admin chat dashboard
+        window.location.href = "/admin-chat/chat";
       }
     } catch (err) {
       console.error(err);
-      setError("Login failed. Try again.");
+      setError(err.message || "Login failed. Try again.");
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form action="#" method="POST" onSubmit={handleLogin} className="bg-gray-800 p-8 rounded-lg w-80">
-
+      <form
+        onSubmit={handleLogin}
+        className="bg-gray-800 p-8 rounded-lg w-80"
+      >
         <h2 className="text-xl font-bold mb-4 text-white text-center">
           Admin Login
         </h2>
+
         <input
           name="username"
           type="text"
           placeholder="Username"
           className="w-full p-2 rounded mb-4 bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+          required
         />
+
         <input
           name="password"
           type="password"
           placeholder="Password"
           className="w-full p-2 rounded mb-4 bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+          required
         />
+
         {error && <p className="text-red-500 mb-2 text-sm">{error}</p>}
+
         <button
           type="submit"
           disabled={loading}

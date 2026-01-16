@@ -1,7 +1,7 @@
 import Head from 'next/head'
 
 export default function SEO({ title, description, image, url }) {
-  const site = 'https://yourbrand.au'
+  const site = 'https://northernpatches.com/'
   return (
     <Head>
       <title>{title ? `${title} | YourBrand AU` : 'YourBrand United States Of America'}</title>

@@ -1,39 +1,21 @@
-// frontend\src\lib\media.js
+// project/frontend/src/lib/media.js
 // ==============================
 // 🌐 Base universal function
 // ==============================
 export function getMediaUrl(path = "", placeholder = "/placeholder.png") {
   if (!path || typeof path !== "string") return placeholder;
 
-  // 🧹 Fix double /media/media/
-  path = path.replace(/\/media\/+/g, "/media/");
+  // If path is already absolute (starts with http or https), return it as is
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
 
-  // ✅ Normalize Docker URLs → local
-  if (path.startsWith("http")) {
-    return path
-      .replace("backend:8000", "localhost:8000")
-      .replace("django_backend:8000", "localhost:8000")
-      .replace("http://backend", "http://localhost:8000")
-      .replace("http://django_backend", "http://localhost:8000")
-      .replace("/media/media/", "/media/");
-  }
+  // Remove any internal URL prefixes
+  path = path.replace(/^http:\/\/localhost:8000\/media\//i, "");
+  path = path.replace(/^http:\/\/django_backend:8000\/media\//i, "");
+  path = path.replace(/^\/?media\//i, "");
 
-  // 🧩 Normalize relative paths
-  const cleanPath = path.replace(/^\/+|\/+$/g, "");
-  const isServer = typeof window === "undefined";
-  const isDocker = process.env.DOCKER_ENV === "true";
-
-  // 🧠 Pick correct base
-  const base =
-    process.env.NEXT_PUBLIC_MEDIA_BASE ||
-    (isServer
-      ? isDocker
-        ? process.env.DOCKER_INTERNAL_MEDIA_BASE || "http://backend:8000"
-        : "http://localhost:8000"
-      : "http://localhost:8000");
-
-  // ✅ Prevent double /media/
-  return `${base}/${cleanPath.startsWith("media/") ? cleanPath : `media/${cleanPath}`}`;
+  // Use the public base
+  const base = process.env.NEXT_PUBLIC_MEDIA_BASE || "https://northernpatches.com/media";
+  return `${base}/${path}`;
 }
 
 // ==============================
@@ -41,12 +23,7 @@ export function getMediaUrl(path = "", placeholder = "/placeholder.png") {
 // ==============================
 export function getSlideImage(slide) {
   if (!slide) return "/placeholder.png";
-
-  if (slide.image) return getMediaUrl(slide.image);
-  if (slide.image_url) return getMediaUrl(slide.image_url);
-  if (slide.background_image) return getMediaUrl(slide.background_image);
-
-  return "/placeholder.png";
+  return getMediaUrl(slide.image || slide.image_url || slide.background_image);
 }
 
 // ==============================
@@ -77,10 +54,5 @@ export function getGalleryImage(item) {
 // ==============================
 export function getBlogImage(blog) {
   if (!blog) return "/placeholder.png";
-
-  return getMediaUrl(
-    blog.cover_image_url  || blog.image || blog.cover_image || blog.thumbnail,
-    "/placeholder.png"
-  );
+  return getMediaUrl(blog.cover_image_url || blog.image || blog.cover_image || blog.thumbnail, "/placeholder.png");
 }
-

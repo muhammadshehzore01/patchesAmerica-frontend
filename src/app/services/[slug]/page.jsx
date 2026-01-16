@@ -1,106 +1,72 @@
-// frontend\src\app\services\[slug]\page.jsx
-'use client';
+// frontend/src/app/services/[slug]/page.js
+// src/app/services/[slug]/page.js
+import { notFound } from "next/navigation";
+import ServiceDetailClient from "./ServiceDetailClient";
+import { getMediaUrl } from "@/lib/media";
 
-import { useService } from '@/hooks/useApiHooks';
-import { useParams } from 'next/navigation';
-import ServiceDetailClient from './ServiceDetailClient';
-import LuxuryOverlay from '@/components/LuxuryOverlay';
-import GlowFade from '@/components/GlowFade';
-import Script from 'next/script';
+/* ---------------- SAFE FETCH ---------------- */
+async function safeFetchService(slug) {
+  try {
+    const API_BASE =
+      process.env.DOCKER_ENV === "true"
+        ? "http://django_backend:8000/api"
+        : process.env.NEXT_PUBLIC_API_BASE || "https://northernpatches.com/api";
 
-export default function ServicePageClient() {
-  const { slug } = useParams();
-  const { service, isLoading, isError } = useService(slug);
+    const res = await fetch(`${API_BASE}/services/${slug}/`, {
+      cache: "no-store",
+    });
 
-  if (isLoading)
-    return (
-      <section className="py-24 text-center text-white text-lg">
-        Loading service details...
-      </section>
-    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
-  if (isError || !service)
-    return (
-      <section className="py-24 text-center text-red-400 text-lg">
-        Service not found.
-      </section>
-    );
+/* ---------------- SEO METADATA ---------------- */
+export async function generateMetadata({ params }) {
+  const service = await safeFetchService(params.slug);
+  if (!service) {
+    return {
+      title: "Service Not Found | Northern Patches",
+      robots: "noindex",
+    };
+  }
 
-  // Ensure gallery array exists, fallback to main image
-  const serviceForClient = {
-    ...service,
-    gallery:
-      service.gallery?.length > 0
-        ? service.gallery
-        : service.image_url
-        ? [{ url: service.image_url }]
-        : [],
-    image: service.image_url || '/default-service-image.jpg',
-    image_alt: `${service.title} - Premium patch services in USA`,
+  const description =
+    service.meta_description ||
+    service.description?.replace(/<[^>]+>/g, "").slice(0, 160);
+
+  return {
+    title: `${service.title} | Northern Patches`,
+    description,
+    alternates: {
+      canonical: `https://northernpatches.com/services/${params.slug}`,
+    },
+    openGraph: {
+      title: service.title,
+      description,
+      images: [getMediaUrl(service.image || service.image_url)],
+    },
   };
+}
 
-  // Structured Data JSON-LD
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        name: "Northren Patches",
-        url: "https://northernpatches.com",
-        logo: "https://northernpatches.com/logo.png",
-      },
-      {
-        "@type": "LocalBusiness",
-        name: "Northren Patches",
-        image: serviceForClient.image,
-        "@id": "https://northernpatches.com",
-        url: "https://northernpatches.com",
-      },
-      {
-        "@type": "Service",
-        name: serviceForClient.title,
-        description: serviceForClient.description,
-        url: `https://northernpatches.com/services/${slug}`,
-        provider: {
-          "@type": "Organization",
-          name: "Northren Patches",
-          url: "https://northernpatches.com",
-        },
-      },
-    ],
-  };
+/* ---------------- PAGE ---------------- */
+export default async function ServicePage({ params }) {
+  const service = await safeFetchService(params.slug);
+  if (!service) notFound();
 
   return (
-    <main className="relative min-h-screen text-white overflow-hidden">
-      <Script id="canonical-tag" strategy="beforeInteractive">
-        {`<link rel="canonical" href="https://northernpatches.com/services/${slug}" />`}
-      </Script>
-
-      <Script id="meta-description" strategy="beforeInteractive">
-        {`<meta name="description" content="${serviceForClient.title} — Premium patch services offered by Northren Patches." />`}
-      </Script>
-
-      <Script type="application/ld+json" id="structured-data" strategy="afterInteractive">
-        {JSON.stringify(structuredData)}
-      </Script>
-
-      {/* Background Layers */}
-      <LuxuryOverlay
-        layers={[
-          { from: 'from-white/5', via: 'via-transparent', to: 'to-transparent' },
-          { from: 'from-[#0033FF]/10', via: 'via-[#0600AB]/5', to: 'to-transparent' },
-        ]}
+    <main className="relative z-10 text-white pt-20 md:pt-24 lg:pt-28">
+      <ServiceDetailClient
+        service={{
+          ...service,
+          gallery: Array.isArray(service.gallery) ? service.gallery : [],
+          image_url: getMediaUrl(
+            service.image || service.image_url || service.thumbnail
+          ),
+        }}
       />
-      <GlowFade
-        layers={[
-          { from: 'from-[#0033FF]/30', via: 'via-[#0600AB]/15', to: 'to-transparent', height: 'h-64' },
-        ]}
-      />
-
-      {/* Service Detail */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 md:px-12 py-20">
-        <ServiceDetailClient service={serviceForClient} />
-      </div>
     </main>
   );
 }

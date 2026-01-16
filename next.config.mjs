@@ -1,31 +1,62 @@
-// next.config.mjs
+
+// project/frontend/next.config.mjs
+/** @type {import('next').NextConfig} */
 
 const isDocker = process.env.DOCKER_ENV === "true";
-const API_HOST = isDocker
-  ? process.env.DOCKER_INTERNAL_API_HOST || "django_backend"
-  : process.env.NEXT_PUBLIC_API_HOST || "127.0.0.1";
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 
+  // ✅ IMAGE OPTIMIZATION
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: API_HOST,
-        port: "8000", // Django daphne serves media/api on port 8001
+        protocol: "https",
+        hostname: "northernpatches.com",
+        pathname: "/media/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.northernpatches.com",
         pathname: "/media/**",
       },
       {
         protocol: "http",
-        hostname: API_HOST,
+        hostname: "django_backend",
         port: "8000",
-        pathname: "/**",
+        pathname: "/media/**",
       },
     ],
-    unoptimized: true,
   },
+
+  // ✅ MOBILE SCROLL RESTORATION
+  experimental: {
+    scrollRestoration: true,
+  },
+
+  // ✅ CLEAN REDIRECT
+  async redirects() {
+    return [
+      {
+        source: "/home",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
+  
+  // next.config.mjs
+  async rewrites() {
+    return [
+      {
+        source: "/sitemap.xml",
+        destination: "/api/sitemap.xml",
+      },
+    ];
+  }
+
+
 };
+
 
 export default nextConfig;

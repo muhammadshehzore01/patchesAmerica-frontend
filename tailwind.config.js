@@ -1,11 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-    "./app/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     container: {
       center: true,
@@ -16,58 +12,40 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        primary: "#5F3DC4",
+        cyan: "#00FFFF",
+        "hero-gradient-start": "#8B5CF6",
+        "hero-gradient-mid": "#EC4899",
+        "hero-gradient-end": "#3B82F6",
+        "text-light": "hsl(220, 15%, 20%)",
+        "text-secondary": "hsl(220, 10%, 50%)",
+        "bg-light": "hsl(0, 0%, 98%)",
+      },
+      fontFamily: {
+        heading: ["Playfair Display", "serif"],
+        sans: ["Inter", "sans-serif"],
+      },
+      boxShadow: {
+        neon: "0 0 20px rgba(255,255,255,0.15), 0 0 40px rgba(255,255,255,0.1)",
+        glow: "0 0 30px rgba(0,255,255,0.2), 0 0 60px rgba(0,255,255,0.1)",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        "3xl": "1.5rem",
+        "4xl": "2rem",
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+        fadeInUp: {
+          "0%": { opacity: 0, transform: "translateY(20px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        fadeInUp: "fadeInUp 0.7s ease-out forwards",
       },
     },
   },
   plugins: [
-    require("tailwindcss-animate"),
+    require("@tailwindcss/line-clamp"),
+    require("@tailwindcss/typography"),
   ],
 };

@@ -5,9 +5,62 @@ import { MessageCircle, Image as ImageIcon, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
-const WS_BASE = process.env.NEXT_PUBLIC_WS_BASE || "ws://localhost:8000";
 const MEDIA_BASE = (process.env.NEXT_PUBLIC_MEDIA_BASE || "http://localhost:8000").replace(/\/+$/, "");
+const WS_BASE = (typeof window !== "undefined"
+  ? process.env.NEXT_PUBLIC_WS_BASE || "wss://northernpatches.com/ws"
+  : process.env.DOCKER_INTERNAL_WS_BASE || "ws://django_backend:8000"
+);
 
+// ----- WebSocket Wrapper -----
+class WSClient {
+  constructor(url) {
+    this.url = url;
+    this.ws = null;
+    this.queue = [];
+    this.listeners = {};
+    this.connect();
+  }
+
+  connect() {
+    this.ws = new WebSocket(this.url);
+    this.ws.onopen = () => {
+      console.log("🟢 WebSocket connected");
+      // flush queue
+      while (this.queue.length > 0) this.ws.send(this.queue.shift());
+    };
+    this.ws.onmessage = (ev) => {
+      if (this.listeners["message"]) this.listeners["message"](ev);
+    };
+    this.ws.onclose = (ev) => {
+      console.log("🔴 WebSocket disconnected", ev.code);
+      // auto-reconnect after 1s
+      setTimeout(() => this.connect(), 1000);
+    };
+    this.ws.onerror = (err) => {
+      console.error("WebSocket error", err);
+      this.ws.close();
+    };
+  }
+
+  send(data) {
+    const msg = typeof data === "string" ? data : JSON.stringify(data);
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(msg);
+    } else {
+      this.queue.push(msg);
+    }
+  }
+
+  on(event, cb) {
+    this.listeners[event] = cb;
+  }
+
+  close() {
+    this.ws?.close();
+  }
+}
+
+// ----- User Chat Widget -----
 export default function UserChatWidget() {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
@@ -22,12 +75,12 @@ export default function UserChatWidget() {
   const originalTitle = useRef(document.title);
   const blinkInterval = useRef(null);
 
-  // ----- Scroll to bottom -----
+  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ----- Load saved username + messages -----
+  // Load saved username + messages
   useEffect(() => {
     const savedName = localStorage.getItem("chatUserName");
     const savedMessages = localStorage.getItem("chatMessages");
@@ -35,28 +88,25 @@ export default function UserChatWidget() {
     if (savedMessages) setMessages(JSON.parse(savedMessages));
   }, []);
 
-  // ----- Save minimal chat history -----
+  // Save last 50 messages
   useEffect(() => {
     if (!username) return;
     const safeMessages = messages.slice(-50);
     localStorage.setItem("chatMessages", JSON.stringify(safeMessages));
   }, [messages, username]);
 
-  // ----- WebSocket -----
+  // WebSocket setup
   useEffect(() => {
     if (!username) return;
-    const ws = new WebSocket(`${WS_BASE}/ws/user/${encodeURIComponent(username)}/`);
-    setSocket(ws);
 
-    ws.onopen = () => console.log("🟢 Chat connected");
-
-    ws.onmessage = (e) => {
+    const wsClient = new WSClient(`${WS_BASE}/ws/user/${encodeURIComponent(username)}/`);
+    wsClient.on("message", (e) => {
       const data = JSON.parse(e.data);
       if (!data.message && !data.attachment) return;
 
       setMessages((prev) => {
         if (data.tempId) {
-          const updated = prev.map((m) =>
+          return prev.map((m) =>
             m.id === data.tempId
               ? {
                   ...m,
@@ -67,7 +117,6 @@ export default function UserChatWidget() {
                 }
               : m
           );
-          return updated;
         }
 
         const exists = prev.some(
@@ -86,19 +135,19 @@ export default function UserChatWidget() {
         setUnreadCount((prev) => prev + 1);
         notifyUser();
       }
-    };
+    });
 
-    ws.onclose = (e) => console.log("🔴 Chat disconnected", e.code);
-    return () => ws.close();
+    setSocket(wsClient);
+    return () => wsClient.close();
   }, [username, open]);
 
-  // ----- Send text message -----
+  // Send message
   const sendMessage = () => {
     const message = input.trim();
     if (!message || !socket) return;
 
     const tempId = Date.now().toString();
-    socket.send(JSON.stringify({ action: "reply", message, tempId }));
+    socket.send({ action: "reply", message, tempId });
     setMessages((prev) => [
       ...prev,
       { id: tempId, message, from_admin: false, temp: true },
@@ -106,14 +155,14 @@ export default function UserChatWidget() {
     setInput("");
   };
 
-  // ----- Send image -----
+  // Send image
   const sendImage = (file) => {
     if (!file || !socket) return;
     const tempId = Date.now().toString();
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result;
-      socket.send(JSON.stringify({ action: "reply", attachment: base64, tempId }));
+      socket.send({ action: "reply", attachment: base64, tempId });
       setMessages((prev) => [
         ...prev,
         { id: tempId, image: base64, temp: true, from_admin: false },
@@ -122,7 +171,7 @@ export default function UserChatWidget() {
     reader.readAsDataURL(file);
   };
 
-  // ----- Start chat -----
+  // Start chat
   const handleStartChat = () => {
     const name = nameInputRef.current?.value.trim();
     if (!name) return alert("Please enter your name to start chat");
@@ -131,17 +180,17 @@ export default function UserChatWidget() {
     setOpen(true);
   };
 
-  // ----- Reset chat -----
+  // Reset chat
   const handleResetChat = () => {
     localStorage.removeItem("chatUserName");
     localStorage.removeItem("chatMessages");
     setUsername("");
     setMessages([]);
     setUnreadCount(0);
-    if (socket) socket.close();
+    socket?.close();
   };
 
-  // ----- Notification -----
+  // Notify user
   const notifyUser = () => {
     new Audio("/notification.wav").play().catch(() => {});
     if (blinkInterval.current) clearInterval(blinkInterval.current);
@@ -158,7 +207,7 @@ export default function UserChatWidget() {
     }, 6000);
   };
 
-  // ----- Resolve Attachment URL -----
+  // Attachment URL resolver
   const getAttachmentUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;

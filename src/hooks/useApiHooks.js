@@ -1,47 +1,52 @@
-// frontend/src/hooks/useApiHooks.js
-'use client';
+// project/frontend/src/hooks/useApiHooks.js
+"use client";
 
-import useSWR from 'swr';
+import useSWR from "swr";
 import {
-  fetchJson as apiFetchJson,
+  fetchJson,
   normalizeSlide,
   normalizeService,
   normalizeBlog,
   normalizePatchRequest,
-} from '../lib/api';
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+  adminFetch,
+} from "../lib/api";
 
+/* =====================================================
+   SWR Fetcher
+===================================================== */
+const fetcher = path => fetchJson(path);
 
-
-// -----------------------------
-// SWR Hooks
-// -----------------------------
+/* =====================================================
+   HOME PAGE DATA
+===================================================== */
 export function useHomeData() {
-  const { data, error } = useSWR(`${API_BASE}/home/`, apiFetchJson);
+  const { data, error } = useSWR("/home/", fetcher);
   const home = data || {};
+
   return {
-    sliders: (home?.sliders ?? []).map(normalizeSlide).filter(Boolean),
-    hero: home?.hero ?? {},
-    features: home?.features ?? [],
-    services: (home?.services ?? []).map(normalizeService).filter(Boolean),
-    blogs: (home?.blogs ?? []).map(normalizeBlog).filter(Boolean),
+    sliders: (home.sliders ?? []).map(normalizeSlide).filter(Boolean),
+    hero: home.hero ?? {},
+    services: (home.services ?? []).map(normalizeService).filter(Boolean),
+    blogs: (home.blogs ?? []).map(normalizeBlog).filter(Boolean),
     isLoading: !data && !error,
     isError: error,
   };
 }
 
+/* =====================================================
+   SERVICES
+===================================================== */
 export function useServices() {
-  const { data, error } = useSWR('/services/', apiFetchJson);
-  const services = data || [];
+  const { data, error } = useSWR("/services/", fetcher);
   return {
-    services: services.map(normalizeService).filter(Boolean),
+    services: (data ?? []).map(normalizeService).filter(Boolean),
     isLoading: !data && !error,
     isError: error,
   };
 }
 
 export function useService(slug) {
-  const { data, error } = useSWR(slug ? `/services/${slug}/` : null, apiFetchJson);
+  const { data, error } = useSWR(slug ? `/services/${slug}/` : null, fetcher);
   return {
     service: data ? normalizeService(data) : null,
     isLoading: !data && !error,
@@ -49,18 +54,20 @@ export function useService(slug) {
   };
 }
 
+/* =====================================================
+   BLOGS
+===================================================== */
 export function useBlogs() {
-  const { data, error } = useSWR('/blogs/', apiFetchJson);
-  const blogs = data || [];
+  const { data, error } = useSWR("/blogs/", fetcher);
   return {
-    blogs: blogs.map(normalizeBlog).filter(Boolean),
+    blogs: (data ?? []).map(normalizeBlog).filter(Boolean),
     isLoading: !data && !error,
     isError: error,
   };
 }
 
 export function useBlog(slug) {
-  const { data, error } = useSWR(slug ? `/blogs/${slug}/` : null, apiFetchJson);
+  const { data, error } = useSWR(slug ? `/blogs/${slug}/` : null, fetcher);
   return {
     blog: data ? normalizeBlog(data) : null,
     isLoading: !data && !error,
@@ -68,53 +75,26 @@ export function useBlog(slug) {
   };
 }
 
+/* =====================================================
+   PATCH REQUESTS (ADMIN)
+===================================================== */
 export function usePatchRequests() {
-  const { data, error } = useSWR('/patch-requests/list/', apiFetchJson); // ✅ now GET works
-  const patches = data || [];
+  const { data, error } = useSWR("/patch-requests/list/", adminFetch);
   return {
-    patches: patches.map(normalizePatchRequest).filter(Boolean),
+    patches: (data ?? []).map(normalizePatchRequest).filter(Boolean),
     isLoading: !data && !error,
     isError: error,
   };
 }
 
 export function usePatchRequest(id) {
-  const { data, error } = useSWR(id ? `/patch-requests/${id}/` : null, apiFetchJson); // ✅ backend URL correct
+  const { data, error } = useSWR(
+    id ? `/patch-requests/${id}/` : null,
+    adminFetch
+  );
   return {
     patch: data ? normalizePatchRequest(data) : null,
     isLoading: !data && !error,
     isError: error,
   };
-}
-
-// -----------------------------
-// Admin login / fetch
-// -----------------------------
-export async function loginAdmin(username, password) {
-  if (typeof window === 'undefined') return { success: false, error: 'Client-only' };
-
-  const res = await fetch('/obtain_admin_token/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-
-  const data = await res.json();
-  if (res.ok && data.token) {
-    localStorage.setItem('adminToken', data.token);
-    return { success: true, token: data.token };
-  } else {
-    return { success: false, error: data.detail || 'Invalid credentials' };
-  }
-}
-
-export async function adminFetch(path, options = {}) {
-  if (typeof window === 'undefined') throw new Error('adminFetch client-only');
-  const token = localStorage.getItem('adminToken');
-  const headers = {
-    ...options.headers,
-    Authorization: token ? `Token ${token}` : undefined,
-    'Content-Type': 'application/json',
-  };
-  return apiFetchJson(path, { ...options, headers });
 }

@@ -1,21 +1,23 @@
-// frontend\src\app\layout.js
 import "./globals.css";
-import BodyWrapper from "./BodyWrapper";
+import Script from "next/script";
 import GlobalModalProvider from "@/components/GlobalModalProvider";
+import BodyWrapper from "./BodyWrapper";
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="font-poppins">
+    <html lang="en" className="scroll-smooth">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-RQ99HQ5Z7T" strategy="afterInteractive" />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-RQ99HQ5Z7T');
+          `}
+        </Script>
       </head>
-
-      <body
-        className="relative min-h-screen antialiased text-white
-        bg-gradient-to-b from-[#00033D] via-[#0600AB] to-[#0033FF]
-        selection:bg-white/20 selection:text-white/90"
-      >
-        {/* 👇 Entire App Wrapped With Modal Provider */}
+      <body className="antialiased overflow-x-hidden">
         <GlobalModalProvider>
           <BodyWrapper>{children}</BodyWrapper>
         </GlobalModalProvider>

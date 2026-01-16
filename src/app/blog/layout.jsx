@@ -1,7 +1,7 @@
 export const metadata = {
-  title: "Our Blog | YourBrand AU",
+  title: "Our Blog | Northern Patches USA",
   description:
-    "Read premium insights, guides, and updates from YourBrand United States Of America. Stay ahead with our blog.",
+    "Read premium insights, guides, and updates from Northern Patches USA. Stay ahead with our blog.",
 };
 
 export default function BlogLayout({ children }) {

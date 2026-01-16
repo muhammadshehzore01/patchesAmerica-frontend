@@ -1,43 +1,29 @@
-// frontend\src\app\BodyWrapper.jsx
 "use client";
 
 import { usePathname } from "next/navigation";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import ClientChatWrapper from "./ClientChatWrapper";
-import LuxuryOverlay from "../components/LuxuryOverlay";
-import GlowFade from "../components/GlowFade";
 
 export default function BodyWrapper({ children }) {
   const pathname = usePathname();
-
-  const isAdminChat = pathname.startsWith("/admin/chat");
+  const isAdminChat = pathname.startsWith("/admin-chat");
 
   return (
-    <>
-      <LuxuryOverlay />
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden">
+      {/* HEADER */}
+      {!isAdminChat && <Header />}
 
-      {!isAdminChat && (
-        <header className="relative z-30">
-          <Header />
-        </header>
-      )}
-
-      <main
-        className={`relative z-20 py-16 px-4 md:px-8 backdrop-blur-[2px] bg-white/5 shadow-brand-lg`}
-      >
+      {/* MAIN CONTENT */}
+      <main className="relative z-10 flex-1 bg-background">
         {children}
       </main>
 
+      {/* FLOATING CHAT (does NOT affect scroll now) */}
       {!isAdminChat && <ClientChatWrapper />}
 
-      {!isAdminChat && (
-        <footer className="relative z-30">
-          <Footer />
-        </footer>
-      )}
-
-      <GlowFade />
-    </>
+      {/* FOOTER */}
+      {!isAdminChat && <Footer />}
+    </div>
   );
 }

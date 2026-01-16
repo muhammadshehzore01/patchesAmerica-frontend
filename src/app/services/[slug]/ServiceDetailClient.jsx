@@ -1,145 +1,186 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import 'swiper/css';
-import 'swiper/css/navigation';
-import { Navigation } from 'swiper/modules';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
-import PatchRequestWizard from '@/components/PatchRequestWizard';
-import { useGlobalModal } from '@/components/GlobalModalProvider';
-import { useServices } from '@/hooks/useApiHooks';
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import { ArrowRight, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import PatchRequestWizard from "@/components/PatchRequestWizard";
+import { useServices } from "@/hooks/useApiHooks";
 
-const getServiceImage = (item) => item?.url || item?.image || item?.image_url || '/default-service-image.jpg';
+/* ---------------- helpers ---------------- */
+const getServiceImage = (item) =>
+  item?.url || item?.image || item?.image_url || "/default-service-image.jpg";
 
 export default function ServiceDetailClient({ service }) {
   const { services: allServices = [], isLoading } = useServices();
-  const { openModal, closeModal } = useGlobalModal();
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile screen
+  const [windowWidth, setWindowWidth] = useState(0);
+  const [showAll, setShowAll] = useState(false);
+  const [showQuotationForm, setShowQuotationForm] = useState(false);
+
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 767);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const resize = () => setWindowWidth(window.innerWidth);
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
-  const handleGetQuote = () => {
-    openModal(
-      <PatchRequestWizard
-        initialService={{
-          title: service.title,
-          description: service.description,
-          image: getServiceImage(service),
-        }}
-        onClose={closeModal}
-      />
-    );
-  };
+  const isMobile = windowWidth <= 767;
 
-  // Mobile Layout
+  if (!service) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-[var(--color-text-secondary)]">
+        Loading service details...
+      </div>
+    );
+  }
+
+  const gallery = Array.isArray(service.gallery) ? service.gallery : [];
+  const filteredServices = useMemo(
+    () => allServices.filter((s) => s.slug !== service.slug),
+    [allServices, service.slug]
+  );
+  const visibleServices = showAll ? filteredServices : filteredServices.slice(0, 6);
+
+  /* =====================================================
+     MOBILE VIEW
+  ===================================================== */
   if (isMobile) {
     return (
-      <div className="px-3 sm:px-4 py-6 sm:py-8 space-y-6 w-full">
-
-        {/* Slider with larger arrows */}
-        <div className="relative w-full group">
-          <button className="prev-arrow absolute left-1 top-1/2 -translate-y-1/2 z-30 bg-black/50 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button className="next-arrow absolute right-1 top-1/2 -translate-y-1/2 z-30 bg-black/50 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg">
-            <ChevronRight className="w-6 h-6" />
-          </button>
-
+      <div className="pt-24 px-4 pb-12 space-y-8 text-[var(--color-text-primary)]">
+        {/* Gallery Slider */}
+        <div className="relative group">
           <Swiper
             modules={[Navigation]}
-            navigation={{ nextEl: '.next-arrow', prevEl: '.prev-arrow' }}
+            navigation={{
+              nextEl: ".next-arrow-mobile",
+              prevEl: ".prev-arrow-mobile",
+            }}
             spaceBetween={12}
-            slidesPerView={1}
-            className="rounded-xl overflow-hidden"
+            slidesPerView={1.15}
+            className="rounded-2xl overflow-hidden shadow-2xl"
           >
-            {(service.gallery?.length ?? 0) > 0
-              ? service.gallery.map((img, i) => (
-                  <SwiperSlide key={i}>
-                    <div className="relative w-full aspect-[4/3] sm:aspect-[3/2] flex items-center justify-center bg-black/10 rounded-xl overflow-hidden">
-                      <Image
-                        src={getServiceImage(img)}
-                        alt={service.image_alt || service.title}
-                        fill
-                        style={{ objectFit: 'contain' }}
-                        priority={i === 0}
-                      />
-                    </div>
-                  </SwiperSlide>
-                ))
-              : (
-                  <SwiperSlide>
-                    <div className="relative w-full aspect-[4/3] sm:aspect-[3/2] flex items-center justify-center bg-black/10 rounded-xl overflow-hidden">
-                      <Image
-                        src={getServiceImage(service)}
-                        alt={service.image_alt || service.title}
-                        fill
-                        style={{ objectFit: 'contain' }}
-                        priority
-                      />
-                    </div>
-                  </SwiperSlide>
-                )}
+            {(gallery.length ? gallery : [service]).map((img, i) => (
+              <SwiperSlide key={i}>
+                <div className="relative h-[240px] bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md flex items-center justify-center">
+                  <Image
+                    src={getServiceImage(img)}
+                    alt={`${service.title} – image ${i + 1}`}
+                    fill
+                    className="object-contain p-4"
+                    priority={i === 0}
+                  />
+                </div>
+              </SwiperSlide>
+            ))}
           </Swiper>
+
+          {/* Mobile Arrows */}
+          <button className="prev-arrow-mobile absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white p-3 rounded-full opacity-70 hover:opacity-100 transition">
+            <ChevronLeft size={24} />
+          </button>
+          <button className="next-arrow-mobile absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white p-3 rounded-full opacity-70 hover:opacity-100 transition">
+            <ChevronRight size={24} />
+          </button>
         </div>
 
-        {/* Title & Description */}
-        <div className="space-y-2 sm:space-y-3">
-          <h1 className="text-xl sm:text-2xl font-bold">{service.title}</h1>
-          <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{service.description}</p>
-        </div>
+        {/* Service Info */}
+        <div className="space-y-6 bg-[var(--color-bg-secondary)]/40 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
+          <h1 className="text-3xl font-bold tracking-tight">{service.title}</h1>
+          <p className="text-[var(--color-text-secondary)] leading-relaxed text-base">
+            {service.description}
+          </p>
 
-        {/* Get Quote Button */}
-        <button
-          onClick={handleGetQuote}
-          className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all rounded-full font-bold shadow-lg hover:shadow-[0_0_40px_cyan,0_0_60px_blue]"
-        >
-          Get Quotation <ArrowRight className="w-5 h-5" />
-        </button>
+          {/* Get Quotation Button */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowQuotationForm(!showQuotationForm)}
+            className="w-full btn-primary py-5 text-lg font-semibold flex items-center justify-center gap-3 shadow-xl rounded-full"
+          >
+            {showQuotationForm ? "Close Form" : "Get Your Custom Quote"}
+            <ArrowRight size={20} />
+          </motion.button>
+
+          {/* Inline Quotation Form */}
+          <AnimatePresence>
+            {showQuotationForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.5 }}
+                className="overflow-hidden mt-4"
+              >
+                <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold">Custom Quote for {service.title}</h3>
+                    <button
+                      onClick={() => setShowQuotationForm(false)}
+                      className="text-[var(--color-text-secondary)] hover:text-white transition"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <PatchRequestWizard
+                    initialService={{
+                      title: service.title,
+                      description: service.description,
+                      image: getServiceImage(service),
+                    }}
+                    onClose={() => setShowQuotationForm(false)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Other Services */}
-        <section className="mt-6 sm:mt-8">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Other Services</h2>
-          {isLoading ? (
-            <p>Loading other services...</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:gap-6">
-              {allServices.filter((s) => s.slug !== service.slug).map((s, i) => (
-                <motion.div
-                  key={s.slug}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="group relative bg-white/5 hover:bg-white/10 p-4 rounded-xl shadow-md border border-white/10 hover:border-blue-600 transition-all duration-300"
+        <section className="pt-8">
+          <h2 className="text-2xl font-bold mb-6">Other Services</h2>
+          <div className="grid grid-cols-1 gap-6">
+            {visibleServices.map((s) => (
+              <div
+                key={s.slug}
+                className="glass p-5 rounded-2xl hover:scale-[1.02] transition-transform duration-300 shadow-lg"
+              >
+                <div className="relative h-40 rounded-xl overflow-hidden mb-4">
+                  <Image
+                    src={getServiceImage(s)}
+                    alt={s.title}
+                    fill
+                    className="object-contain p-4"
+                  />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
+                <p className="text-sm text-[var(--color-text-secondary)] line-clamp-3">
+                  {s.description}
+                </p>
+                <Link
+                  href={`/services/${s.slug}`}
+                  className="text-[var(--color-accent)] font-medium mt-3 inline-block hover:underline"
                 >
-                  <div className="relative w-full aspect-[4/3] sm:aspect-[3/2] overflow-hidden rounded-lg mb-3">
-                    <Image
-                      src={getServiceImage(s)}
-                      alt={s.title}
-                      fill
-                      style={{ objectFit: 'contain' }}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-1">{s.title}</h3>
-                  <p className="text-sm text-gray-400 line-clamp-2 mb-2">{s.description}</p>
-                  <a
-                    href={`/services/${s.slug}`}
-                    title={`View details for ${s.title}`}
-                    className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-                  >
-                    View Details →
-                  </a>
-                </motion.div>
-              ))}
+                  View Details →
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          {filteredServices.length > 6 && (
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setShowAll(!showAll)}
+                className="btn-primary px-8 py-3 text-base"
+              >
+                {showAll ? "Show Less" : "View More Services"}
+              </button>
             </div>
           )}
         </section>
@@ -147,107 +188,162 @@ export default function ServiceDetailClient({ service }) {
     );
   }
 
-  // Desktop Layout (>=768px)
+  /* =====================================================
+     DESKTOP VIEW
+  ===================================================== */
   return (
-    <div className="relative px-4 sm:px-6 md:px-12 py-12 space-y-10">
-      <div className="grid md:grid-cols-2 gap-8 items-start">
-        {/* Slider */}
-        <div className="relative w-full group">
-          <button className="prev-arrow absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white w-9 h-9 flex items-center justify-center rounded-full transition opacity-100 md:opacity-0 md:group-hover:opacity-100">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button className="next-arrow absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white w-9 h-9 flex items-center justify-center rounded-full transition opacity-100 md:opacity-0 md:group-hover:opacity-100">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-
+    <div className="relative max-w-7xl mx-auto px-6 py-16 space-y-16 text-[var(--color-text-primary)]">
+      {/* Hero Section */}
+      <div className="grid md:grid-cols-2 gap-12 items-start">
+        {/* Gallery */}
+        <div className="relative group rounded-3xl overflow-hidden shadow-2xl">
           <Swiper
             modules={[Navigation]}
-            navigation={{ nextEl: '.next-arrow', prevEl: '.prev-arrow' }}
-            spaceBetween={12}
+            navigation={{
+              nextEl: ".next-arrow-desktop",
+              prevEl: ".prev-arrow-desktop",
+            }}
             slidesPerView={1}
-            className="rounded-2xl overflow-hidden"
+            spaceBetween={0}
+            className="rounded-3xl"
           >
-            {(service.gallery?.length ?? 0) > 0
-              ? service.gallery.map((img, i) => (
-                  <SwiperSlide key={i}>
-                    <div className="relative w-full h-[250px] sm:h-[300px] md:h-[420px] flex items-center justify-center bg-black/10 rounded-xl overflow-hidden">
-                      <Image
-                        src={getServiceImage(img)}
-                        alt={service.image_alt || service.title}
-                        fill
-                        style={{ objectFit: 'contain' }}
-                        className="transition-transform duration-500"
-                        priority={i === 0}
-                      />
-                    </div>
-                  </SwiperSlide>
-                ))
-              : (
-                  <SwiperSlide>
-                    <div className="relative w-full h-[250px] sm:h-[300px] md:h-[420px] flex items-center justify-center bg-black/10 rounded-xl overflow-hidden">
-                      <Image
-                        src={getServiceImage(service)}
-                        alt={service.image_alt || service.title}
-                        fill
-                        style={{ objectFit: 'contain' }}
-                        className="transition-transform duration-500"
-                        priority
-                      />
-                    </div>
-                  </SwiperSlide>
-                )}
+            {(gallery.length ? gallery : [service]).map((img, i) => (
+              <SwiperSlide key={i}>
+                <div className="relative h-[520px] bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl flex items-center justify-center">
+                  <Image
+                    src={getServiceImage(img)}
+                    alt={`${service.title} – image ${i + 1}`}
+                    fill
+                    className="object-contain p-8"
+                    priority={i === 0}
+                  />
+                </div>
+              </SwiperSlide>
+            ))}
           </Swiper>
-        </div>
 
-        {/* Details */}
-        <div className="flex flex-col justify-start space-y-6">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold break-words">{service.title}</h1>
-          <p className="text-gray-300 text-sm sm:text-base md:text-lg leading-relaxed">{service.description}</p>
-
-          <button
-            onClick={handleGetQuote}
-            className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all rounded-full font-bold shadow-lg hover:shadow-[0_0_40px_cyan,0_0_60px_blue]"
-          >
-            Get Quotation <ArrowRight className="w-5 h-5" />
+          {/* Desktop Arrows */}
+          <button className="prev-arrow-desktop absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white p-4 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg">
+            <ChevronLeft size={28} />
+          </button>
+          <button className="next-arrow-desktop absolute right-6 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md text-white p-4 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg">
+            <ChevronRight size={28} />
           </button>
         </div>
+
+        {/* Details & CTA */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="space-y-8 sticky top-24"
+        >
+          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--color-accent)] to-purple-500 bg-clip-text text-transparent">
+            {service.title}
+          </h1>
+
+          <p className="text-[var(--color-text-secondary)] leading-relaxed text-xl">
+            {service.description}
+          </p>
+
+          {/* Beautiful Get Quotation Button */}
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)" }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowQuotationForm(!showQuotationForm)}
+            className="w-full md:w-auto btn-primary px-12 py-6 text-xl font-semibold flex items-center justify-center gap-3 shadow-2xl rounded-full transition-all"
+          >
+            {showQuotationForm ? "Close Form" : "Get Your Custom Quote"}
+            <ArrowRight size={24} className={showQuotationForm ? "" : "animate-pulse"} />
+          </motion.button>
+
+          {/* Inline Quotation Form – Beautifully Presented */}
+          <AnimatePresence>
+            {showQuotationForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: 20 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: 20 }}
+                transition={{ duration: 0.6 }}
+                className="overflow-hidden mt-8 rounded-3xl border border-[var(--color-accent)]/30 bg-gradient-to-b from-[var(--color-bg-secondary)] to-[var(--color-bg-primary)] backdrop-blur-xl shadow-2xl"
+              >
+                <div className="p-8 md:p-10">
+                  <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-3xl font-bold bg-gradient-to-r from-[var(--color-accent)] to-purple-500 bg-clip-text text-transparent">
+                      Custom Quote Request
+                    </h3>
+                    <button
+                      onClick={() => setShowQuotationForm(false)}
+                      className="text-[var(--color-text-secondary)] hover:text-white transition p-2 rounded-full hover:bg-white/10"
+                      aria-label="Close form"
+                    >
+                      <X size={28} />
+                    </button>
+                  </div>
+
+                  <PatchRequestWizard
+                    initialService={{
+                      title: service.title,
+                      description: service.description,
+                      image: getServiceImage(service),
+                    }}
+                    onClose={() => setShowQuotationForm(false)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Other Services */}
-      <section className="mt-16">
-        <h2 className="text-xl sm:text-2xl font-semibold mb-6">Other Services</h2>
-        {isLoading ? (
-          <p>Loading other services...</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {allServices.filter((s) => s.slug !== service.slug).map((s, i) => (
+      <section className="pt-16">
+        <h2 className="text-4xl md:text-5xl font-bold mb-12 text-center">
+          Explore More Premium Services
+        </h2>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence>
+            {visibleServices.map((s) => (
               <motion.div
                 key={s.slug}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="group relative bg-white/5 hover:bg-white/10 p-5 rounded-2xl shadow-md border border-white/10 hover:border-blue-600 transition-all duration-300"
+                viewport={{ once: true }}
+                className="glass p-6 rounded-3xl hover:scale-[1.02] transition-transform duration-300 shadow-xl"
               >
-                <div className="relative w-full h-40 md:h-48 overflow-hidden rounded-xl mb-4">
+                <div className="relative h-56 rounded-2xl overflow-hidden mb-5">
                   <Image
                     src={getServiceImage(s)}
                     alt={s.title}
                     fill
-                    style={{ objectFit: 'contain' }}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                    className="object-contain p-6"
                   />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
-                <p className="text-sm text-gray-400 line-clamp-2 mb-3">{s.description}</p>
-                <a
+                <h3 className="text-2xl font-semibold mb-3">{s.title}</h3>
+                <p className="text-[var(--color-text-secondary)] line-clamp-3 mb-4">
+                  {s.description}
+                </p>
+                <Link
                   href={`/services/${s.slug}`}
-                  title={`View details for ${s.title}`}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                  className="text-[var(--color-accent)] font-medium hover:text-[var(--color-accent-dark)] transition-colors flex items-center gap-2"
                 >
-                  View Details →
-                </a>
+                  View Details <ArrowRight size={16} />
+                </Link>
               </motion.div>
             ))}
+          </AnimatePresence>
+        </div>
+
+        {filteredServices.length > 6 && (
+          <div className="text-center mt-12">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() => setShowAll(!showAll)}
+              className="btn-primary px-10 py-5 text-lg font-semibold"
+            >
+              {showAll ? "Show Fewer Services" : "View More Services"}
+            </motion.button>
           </div>
         )}
       </section>

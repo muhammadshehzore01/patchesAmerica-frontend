@@ -3,16 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import clsx from "clsx";
 
-// ---------------- ENV ----------------
-const isDocker = process.env.DOCKER_ENV === "true";
-const WS_BASE = isDocker
-  ? process.env.DOCKER_INTERNAL_WS_BASE || "ws://backend:8000"
-  : process.env.NEXT_PUBLIC_WS_BASE || "ws://localhost:8000";
-const MEDIA_BASE = isDocker
-  ? process.env.DOCKER_INTERNAL_MEDIA_BASE || "http://backend:8000/media"
-  : process.env.NEXT_PUBLIC_MEDIA_BASE || "http://localhost:8000/media";
+const WS_BASE = process.env.NEXT_PUBLIC_WS_BASE;
+const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE;
 
-// ---------------- MAIN COMPONENT ----------------
 export default function AdminChatPage() {
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
@@ -28,18 +21,18 @@ export default function AdminChatPage() {
   const titleBlinkRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // ---------------- AUTH ----------------
+  // Authentication
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("adminToken");
     const name = localStorage.getItem("adminName") || "admin";
     setAdminName(name);
-    if (!token) window.location.href = "/admin/login";
+    if (!token) window.location.href = "/admin-chat/login";
     else setIsAuthenticated(true);
   }, []);
 
-  // ---------------- SOUND & NOTIFICATION ----------------
   const playSound = () => new Audio("/notification.wav").play().catch(() => {});
+
   const startTitleBlink = (text = "💬 New Message!") => {
     if (titleBlinkRef.current) return;
     const original = document.title;
@@ -49,11 +42,13 @@ export default function AdminChatPage() {
       visible = !visible;
     }, 1000);
   };
+
   const stopTitleBlink = () => {
     clearInterval(titleBlinkRef.current);
     titleBlinkRef.current = null;
     document.title = "Admin Chat";
   };
+
   const showNotification = (title, body) => {
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       const n = new Notification(title, { body, silent: false });
@@ -61,15 +56,12 @@ export default function AdminChatPage() {
     }
   };
 
-  // ---------------- WEBSOCKET ----------------
   const initWebSocket = () => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("adminToken");
     if (!token) return;
 
-    const ws = new WebSocket(
-      `${WS_BASE}/ws/admin/${encodeURIComponent(adminName)}/?token=${token}`
-    );
+    const ws = new WebSocket(`${WS_BASE}/ws/admin-chat/${encodeURIComponent(adminName)}/?token=${token}`);
     socketRef.current = ws;
 
     ws.onopen = () => console.log("✅ Connected to chat server");
@@ -165,7 +157,6 @@ export default function AdminChatPage() {
     };
   };
 
-  // ---------------- ADD MESSAGE ----------------
   const addMessage = (usernameKey, msg) => {
     setUserMessages((prev) => {
       const userMsgs = prev[usernameKey] || [];
@@ -196,7 +187,6 @@ export default function AdminChatPage() {
     });
   };
 
-  // ---------------- EFFECTS ----------------
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (Notification.permission !== "granted") Notification.requestPermission();
@@ -208,13 +198,11 @@ export default function AdminChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [userMessages, connectedUser]);
 
-  // ---------------- SOCKET SEND ----------------
   const socketSend = (payload) => {
     const ws = socketRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
   };
 
-  // ---------------- SEND MESSAGE ----------------
   const sendMessage = () => {
     if (!connectedUser || !socketRef.current) return;
 
@@ -241,7 +229,6 @@ export default function AdminChatPage() {
     }
   };
 
-  // ---------------- FILE PREVIEW ----------------
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -253,7 +240,6 @@ export default function AdminChatPage() {
     reader.readAsDataURL(file);
   };
 
-  // ---------------- FETCH HISTORY ----------------
   const fetchHistory = (user) => {
     setConnectedUser(user.username);
     stopTitleBlink();
@@ -266,33 +252,32 @@ export default function AdminChatPage() {
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminName");
-    window.location.href = "/admin/login";
+    window.location.href = "/admin-chat/login";
   };
 
   if (!isAuthenticated) return null;
 
-  // ---------------- RENDER ----------------
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex">
-      {/* Sidebar */}
-      <aside className="w-1/4 bg-gray-800 p-4 space-y-3">
+    <div className="min-h-screen flex bg-gray-900 text-white relative">
+      {/* USERS LIST */}
+      <aside className="w-1/4 bg-gray-800 p-4 space-y-3 border-r border-gray-700">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold">Users Online</h2>
+          <h2 className="text-lg font-bold gradient-heading">Users Online</h2>
           <button
             onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
+            className="btn-primary bg-red-600 hover:bg-red-700 text-xs px-2 py-1 rounded"
           >
             Logout
           </button>
         </div>
-        <ul className="space-y-2 max-h-[70vh] overflow-y-auto">
+        <ul className="space-y-2 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
           {users.length > 0 ? (
             users.map((u, idx) => (
               <li
                 key={`${u.username}-${idx}`}
                 onClick={() => fetchHistory(u)}
                 className={clsx(
-                  "flex items-center justify-between p-2 rounded cursor-pointer transition-colors duration-300",
+                  "flex items-center justify-between p-2 rounded cursor-pointer transition-colors duration-300 card",
                   connectedUser === u.username
                     ? "bg-blue-700 text-white"
                     : "hover:bg-gray-700",
@@ -322,6 +307,7 @@ export default function AdminChatPage() {
           )}
         </ul>
 
+        {/* Admins */}
         <div className="mt-4 border-t border-gray-700 pt-3">
           <h3 className="text-sm font-semibold text-gray-400">Admins Online</h3>
           <ul className="text-xs text-gray-300 space-y-1">
@@ -332,7 +318,7 @@ export default function AdminChatPage() {
         </div>
       </aside>
 
-      {/* Chat Window */}
+      {/* CHAT WINDOW */}
       <main className="flex-1 flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
           {connectedUser ? (
@@ -340,13 +326,11 @@ export default function AdminChatPage() {
               userMessages[connectedUser].map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${
-                    msg.from === "admin" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${msg.from === "admin" ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={clsx(
-                      "max-w-[70%] px-3 py-2 rounded-lg text-sm break-words relative shadow-md",
+                      "max-w-[70%] px-3 py-2 rounded-lg text-sm break-words relative shadow-md card",
                       msg.from === "admin"
                         ? "bg-blue-700 text-white rounded-br-none"
                         : "bg-gray-200 text-gray-900 rounded-bl-none"
@@ -355,17 +339,14 @@ export default function AdminChatPage() {
                     {msg.attachment ? (
                       <div className="flex flex-col gap-1">
                         {(() => {
-                          const imgUrl = msg.attachment.startsWith("http")
-                            ? msg.attachment
-                            : msg.attachment.startsWith("data:")
-                            ? msg.attachment
-                            : `${MEDIA_BASE}/${msg.attachment}`.replace(
-                                /([^:]\/)\/+/g,
-                                "$1"
-                              );
+                          const imgUrl =
+                            msg.attachment.startsWith("http")
+                              ? msg.attachment
+                              : msg.attachment.startsWith("data:")
+                              ? msg.attachment
+                              : `${MEDIA_BASE}/${msg.attachment}`.replace(/([^:]\/)\/+/g, "$1");
 
-                          const isImage =
-                            /\.(jpg|jpeg|png|gif|webp)$/i.test(imgUrl);
+                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(imgUrl);
 
                           return (
                             <>
@@ -383,9 +364,7 @@ export default function AdminChatPage() {
                                 download
                                 className="text-xs text-blue-300 hover:text-blue-400 hover:underline"
                               >
-                                📎 {isImage
-                                  ? "View Full Image"
-                                  : "Download Attachment"}
+                                📎 {isImage ? "View Full Image" : "Download Attachment"}
                               </a>
                             </>
                           );
@@ -403,14 +382,11 @@ export default function AdminChatPage() {
               </p>
             )
           ) : (
-            <p className="text-gray-400 text-center mt-10">
-              Select a user to view chat
-            </p>
+            <p className="text-gray-400 text-center mt-10">Select a user to view chat</p>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
         {connectedUser && (
           <div className="p-3 border-t border-gray-700 flex flex-col bg-gray-800 gap-2">
             {previewImage && (
@@ -418,7 +394,7 @@ export default function AdminChatPage() {
                 <img
                   src={previewImage}
                   alt="Preview"
-                  className="w-20 h-20 object-contain rounded"
+                  className="w-20 h-20 object-contain rounded shadow-lg"
                 />
                 <button
                   onClick={() => {
@@ -447,13 +423,18 @@ export default function AdminChatPage() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="Type a reply..."
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-2 text-white placeholder-gray-400"
+                placeholder="Type a message..."
+                className="flex-1 p-2 rounded bg-gray-700 text-white placeholder-gray-400 outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
               />
               <button
                 onClick={sendMessage}
-                className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                className="btn-primary px-4 py-2 text-white font-semibold"
               >
                 Send
               </button>

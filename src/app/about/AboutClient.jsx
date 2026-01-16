@@ -49,7 +49,7 @@ export default function AboutClient({ aboutData }) {
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
+              className="object-contain"
             />
           </div>
         </motion.div>

@@ -1,134 +1,147 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useHomeData } from "@/hooks/useApiHooks";
-import { getSlideImage } from "@/lib/media";
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-export default function HeroSlider() {
-  const { sliders, isLoading, isError } = useHomeData();
-  const [current, setCurrent] = useState(0);
+export default function HeroSlider({ slides = [] }) {
+  const [index, setIndex] = useState(0);
+  const timer = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Auto slide every 6s
+  // Auto-slide every 6.5s, pause on hover
   useEffect(() => {
-    if (!sliders || sliders.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % sliders.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [sliders]);
+    if (!slides.length) return;
+    if (isHovered) return;
 
-  if (isError) return <p className="text-center mt-10 text-red-500">Failed to load slides.</p>;
-  if (isLoading) return <p className="text-center mt-10">Loading slides...</p>;
-  if (!sliders || sliders.length === 0) return null;
+    timer.current = setInterval(() => {
+      setIndex((prev) => (prev + 1) % slides.length);
+    }, 6500);
 
-  const slide = sliders[current];
+    return () => clearInterval(timer.current);
+  }, [slides.length, isHovered]);
 
-  // --- Variants ---
-  const imageVariants = {
-    initial: { opacity: 0, scale: 1.1, rotate: 1 },
-    animate: { opacity: 1, scale: 1, rotate: 0 },
-    exit: { opacity: 0, scale: 0.95, rotate: -1 },
-  };
+  if (!slides.length) {
+    return (
+      <div className="h-[80vh] min-h-[600px] bg-gradient-to-br from-[#0a1326] to-[#111827]" />
+    );
+  }
 
-  const textVariants = {
-    hidden: { opacity: 0, y: 60, skewY: 5 },
-    visible: { opacity: 1, y: 0, skewY: 0, transition: { duration: 1, ease: "easeOut" } },
-  };
-
-  const ctaVariants = {
-    hidden: { opacity: 0, y: 20, scale: 0.9 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1, 
-      transition: { delay: 0.3, duration: 0.6, ease: "easeOut" } 
-    },
-    hover: { scale: 1.05, textShadow: "0 0 15px rgba(255,255,255,0.8)", boxShadow: "0 0 20px rgba(0,255,255,0.6)" },
-  };
+  const slide = slides[index];
+  const ctaText = slide.cta_text || "Get Your Free Quote →";
+  const ctaUrl = slide.cta_url || "/quote";
+  const badgeText = slide.badge_text || "Limited Offer!";
 
   return (
-    <section className="relative w-full h-[80vh] overflow-hidden bg-gradient-to-r from-cyan-900 via-purple-900 to-pink-900">
+    <section
+      className="relative z-0 flex items-center justify-center overflow-hidden pt-20"
+      style={{ minHeight: "calc(80vh)" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Slide Image */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={slide.id}
-          className="absolute inset-0 w-full h-full"
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          variants={imageVariants}
-          transition={{ duration: 1.5 }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(e, info) => {
-            if (info.offset.x < -50) setCurrent((prev) => (prev + 1) % sliders.length);
-            if (info.offset.x > 50) setCurrent((prev) => (prev - 1 + sliders.length) % sliders.length);
-          }}
+          key={index}
+          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
         >
-          {/* Background */}
-          <motion.img
-            src={getSlideImage(slide)}
-            alt={slide.title || "Slide"}
-            className="w-full h-full object-contain brightness-75"
-            variants={imageVariants}
+          <Image
+            src={slide.image_url || slide.image || "/placeholder-hero.jpg"}
+            alt={slide.title || "Premium Custom Patches - Northern Patches USA"}
+            fill
+            className="object-contain brightness-[0.7] contrast-[1.1]"
+            priority={index === 0}
+            quality={90}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
           />
-
-          {/* Overlay with gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 z-10" />
-
-          {/* Text */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center px-6 md:px-0 z-20">
-            {slide.title && (
-              <motion.h1
-                className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-wide drop-shadow-[0_0_15px_rgba(0,255,255,0.7)]"
-                variants={textVariants}
-                initial="hidden"
-                animate="visible"
-                key={`title-${slide.id}`}
-              >
-                {slide.title}
-              </motion.h1>
-            )}
-
-            {slide.subtitle && (
-              <motion.p
-                className="text-lg md:text-2xl text-cyan-100 mb-6 max-w-2xl mx-auto drop-shadow-md"
-                variants={textVariants}
-                initial="hidden"
-                animate="visible"
-                key={`subtitle-${slide.id}`}
-              >
-                {slide.subtitle}
-              </motion.p>
-            )}
-
-            {slide.cta_text && slide.cta_url && (
-              <motion.a
-                href={slide.cta_url}
-                className="inline-block px-8 py-4 text-lg font-bold text-black bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-xl shadow-lg hover:scale-105 transition-transform"
-                variants={ctaVariants}
-                initial="hidden"
-                animate="visible"
-                whileHover="hover"
-                key={`cta-${slide.id}`}
-              >
-                {slide.cta_text}
-              </motion.a>
-            )}
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/20 to-purple-900/10" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation dots */}
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex gap-3 z-30">
-        {sliders.map((_, index) => (
+      {/* Slide Content */}
+      <div className="relative z-10 text-center px-6 max-w-5xl">
+        {/* Badge / Offer */}
+        {badgeText && (
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="inline-block mb-4 px-4 py-2 bg-red-600 text-white font-bold rounded-full shadow-lg uppercase tracking-wide animate-pulse"
+          >
+            {badgeText}
+          </motion.div>
+        )}
+
+        {/* Title */}
+        <motion.h1
+          initial={{ y: 60, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 1 }}
+          className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-tight mb-6 drop-shadow-2xl"
+        >
+          {slide.title || "Craft Premium Custom Patches"}
+        </motion.h1>
+
+        {/* Subtitle */}
+        <motion.p
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.7, duration: 1 }}
+          className="text-xl md:text-2xl mb-10 opacity-90 max-w-3xl mx-auto"
+        >
+          {slide.subtitle ||
+            "Embroidered • PVC • Chenille • Fast USA Shipping • Expert Craftsmanship"}
+        </motion.p>
+
+        {/* CTA Button */}
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 1, duration: 0.9 }}
+        >
+          <Link
+            href={ctaUrl}
+            className="inline-block px-12 py-5 text-xl font-semibold rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 shadow-xl hover:shadow-2xl text-white transition-all duration-300 scale-100 hover:scale-105"
+            aria-label={ctaText}
+          >
+            {ctaText}
+          </Link>
+        </motion.div>
+      </div>
+
+      {/* Navigation Buttons */}
+      <button
+        onClick={() => setIndex((i) => (i - 1 + slides.length) % slides.length)}
+        className="absolute left-4 md:left-10 top-1/2 -translate-y-1/2 z-20 p-4 glass rounded-full text-white hover:bg-white/10 transition-all duration-300"
+        aria-label="Previous slide"
+      >
+        <FiChevronLeft size={32} />
+      </button>
+      <button
+        onClick={() => setIndex((i) => (i + 1) % slides.length)}
+        className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 z-20 p-4 glass rounded-full text-white hover:bg-white/10 transition-all duration-300"
+        aria-label="Next slide"
+      >
+        <FiChevronRight size={32} />
+      </button>
+
+      {/* Pagination Dots */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
+        {slides.map((_, i) => (
           <button
-            key={index}
-            onClick={() => setCurrent(index)}
-            className={`w-4 h-4 rounded-full transition-colors duration-300 ${
-              index === current ? "bg-cyan-400 shadow-[0_0_10px_cyan] animate-pulse" : "bg-white/50 hover:bg-white"
+            key={i}
+            onClick={() => setIndex(i)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              i === index ? "bg-white scale-125" : "bg-white/50"
             }`}
+            aria-label={`Slide ${i + 1}`}
           />
         ))}
       </div>

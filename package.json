@@ -5,10 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build ",
+    "build": "next build && npx next-sitemap --config next-sitemap.config.cjs",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "postbuild": "next-sitemap",
     "clean": "rm -rf .next node_modules && npm install"
   },
   "dependencies": {
@@ -52,6 +51,7 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/postcss": "^4.1.16",
     "@tailwindcss/typography": "^0.5.19",
+    "cross-env": "^10.1.0",
     "eslint": "^9.15.0",
     "eslint-config-next": "15.5.4"
   }

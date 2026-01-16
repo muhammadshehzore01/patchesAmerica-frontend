@@ -1,179 +1,194 @@
 "use client";
+import { useState, useEffect, forwardRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence, useScroll, useSpring, useTransform } from "framer-motion";
-import { useState, useEffect } from "react";
+import { FiMenu, FiX } from "react-icons/fi";
+import { useHomeData } from "@/hooks/useApiHooks";
 
-export default function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
+const Header = forwardRef((props, ref) => {
+  const { services } = useHomeData();
+  const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const galleryHref =
+    services.length > 0 && services[0]?.slug
+      ? `/services/${services[0].slug}/gallery`
+      : "/gallery";
 
   const { scrollY } = useScroll();
   const scrollYProgress = useSpring(scrollY, { stiffness: 100, damping: 20 });
   const particleY = useTransform(scrollYProgress, [0, 500], [0, 50]);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          setScrolled(currentY > 40);
+          setHidden(currentY > lastY && currentY > 120);
+          lastY = currentY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const NavLink = ({ href, children, onClick }) => (
-    <motion.div
-      className="relative perspective-1000"
-      whileHover={{ rotateX: 10, rotateY: 5 }}
-      initial="rest"
-      animate="rest"
-    >
+  // ----------------------
+  // Navigation Items
+  // ----------------------
+  const navItems = [
+    { label: "Home", href: "/" },
+    { label: "About", href: "/about" },
+    { label: "Services", href: "/services" },
+    { label: "Gallery", href: galleryHref, prefetch: false }, // prefetch disabled
+    { label: "Blog", href: "/blog", prefetch: false }, // prefetch disabled
+    { label: "Contact", href: "/contact" },
+  ];
+
+  // ----------------------
+  // NavLink component
+  // ----------------------
+  const NavLink = ({ href, children, prefetch = true }) => (
+    <motion.div className="relative group" whileHover={{ y: -1 }}>
       <Link
         href={href}
-        onClick={onClick}
-        className="relative z-10 px-3 py-1 font-semibold text-white/90 transition-colors bg-clip-text bg-gradient-to-r from-white via-white/80 to-white hover:text-transparent hover:bg-gradient-to-r hover:from-[#FF0000] hover:via-[#FF5555] hover:to-[#FF0000]"
+        prefetch={prefetch}
+        className="px-2 sm:px-3 py-[2px] sm:py-1 text-xs sm:text-sm md:text-base font-medium sm:font-semibold text-foreground/90 hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-[140px]"
       >
         {children}
       </Link>
       <motion.span
-        className="absolute left-0 bottom-0 h-[2px] rounded blur-sm bg-gradient-to-r from-[#FF0000] via-[#FF5555] to-[#FF0000]"
-        variants={{
-          rest: { width: 0, opacity: 0 },
-          hover: { width: "100%", opacity: 1 },
-        }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="absolute left-0 bottom-0 h-[2px] bg-primary rounded-full"
+        variants={{ rest: { width: 0 }, hover: { width: "100%" } }}
+        transition={{ duration: 0.3 }}
       />
     </motion.div>
   );
 
+  // ----------------------
+  // Header JSX
+  // ----------------------
   return (
     <motion.header
-      initial={{ y: -50, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7 }}
-      className={`sticky top-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "bg-gradient-to-r from-brand-900/90 via-brand-800/80 to-brand-700/80 backdrop-blur-md shadow-2xl"
-          : "bg-gradient-to-r from-brand-900/70 via-brand-800/60 to-brand-700/60 backdrop-blur-sm"
-      }`}
-      style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+      ref={ref}
+      initial={{ y: 0 }}
+      animate={{ y: hidden ? "-110%" : "0%" }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className={`fixed top-0 inset-x-0 z-50 backdrop-blur-md transition-all duration-500
+        ${scrolled ? "bg-background/95 shadow-lg" : "bg-background/70"}`}
     >
-      {/* Animated particles */}
+      {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <motion.div
             key={i}
-            className={`w-24 h-24 rounded-full bg-[#FF0000]/20 absolute blur-2xl`}
-            style={{
-              top: `${20 + i * 10}%`,
-              left: `${i * 15}%`,
-            }}
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/20 absolute blur-2xl"
+            style={{ top: `${20 + i * 12}%`, left: `${i * 15}%` }}
             animate={{ y: [0, 10, 0] }}
-            transition={{
-              repeat: Infinity,
-              duration: 12 + i * 2,
-              ease: "easeInOut",
-              delay: i,
-            }}
+            transition={{ repeat: Infinity, duration: 10 + i * 2, ease: "easeInOut", delay: i }}
           />
         ))}
         <motion.div
-          className="w-32 h-32 bg-[#FF5555]/20 rounded-full blur-3xl absolute top-10 left-1/2 -translate-x-1/2"
+          className="w-24 h-24 sm:w-28 sm:h-28 bg-primary/30 rounded-full blur-3xl absolute top-8 left-1/2 -translate-x-1/2"
           style={{ y: particleY }}
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center justify-between z-20">
-        {/* Logo + Brand */}
-        <div className="flex items-center gap-2 sm:gap-3 z-10 relative">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 relative rounded-full overflow-hidden ring-2 ring-white/30 shadow-lg">
-            <Image
-              src="/usa-flag.jpg"
-              alt="United States Of America Flag Logo"
-              fill
-              sizes="40px"
-              className="object-cover"
-              priority
-            />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center justify-between h-16 sm:h-20 z-10">
+        {/* Logo */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 relative rounded-full overflow-hidden ring-2 ring-foreground/30 shadow-lg">
+            <Image src="/usa-flag.jpg" alt="USA Flag" fill className="object-cover" priority />
           </div>
-          <div className="flex flex-col">
-            <Link href="/" className="text-base sm:text-lg md:text-2xl font-bold leading-none">
-              <span className="text-[#FF0000]">Northern</span>
-              <span className="text-white">-Patches</span>
-              <span className="text-[#FF0000]">-America</span>
+          <div className="flex flex-col leading-tight">
+            <Link href="/" className="text-sm sm:text-base md:text-lg font-bold truncate">
+              <span className="text-primary">Northern</span>
+              <span className="text-foreground">-Patches</span>
+              <span className="text-primary">-America</span>
             </Link>
-            {/* Hidden on mobile */}
-            <div className="text-[9px] sm:text-xs text-white/70 hidden sm:block">
-              Made for United States Of America | Premium Quality
-            </div>
+            <span className="text-[9px] sm:text-xs text-muted-foreground hidden sm:block truncate">
+              Made for United States | Premium Quality
+            </span>
           </div>
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-6 md:gap-8 text-sm font-medium z-10 relative">
-          <NavLink href="/">Home</NavLink>
-          <NavLink href="/about">About</NavLink>
-          <NavLink href="/services">Services</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
-          <motion.div whileHover={{ scale: 1.1, rotate: 1 }}>
+        <nav className="hidden lg:flex items-center gap-2 sm:gap-4 md:gap-6 flex-shrink">
+          {navItems.map((item) => (
+            <NavLink key={item.label} href={item.href} prefetch={item.prefetch}>
+              {item.label}
+            </NavLink>
+          ))}
+          <motion.div whileHover={{ scale: 1.05 }} className="flex-shrink-0">
             <Link
               href="/quote"
-              className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#FF0000]/90 text-white font-semibold shadow-2xl hover:bg-[#FF0000]/100 transition-all text-xs sm:text-sm"
-              style={{
-                boxShadow: "0 8px 20px rgba(255,0,0,0.4), 0 4px 10px rgba(0,0,0,0.2)",
-              }}
+              className="px-3 sm:px-4 py-1 sm:py-2 rounded-full btn-primary text-primary-foreground font-semibold shadow-lg transition text-xs sm:text-sm truncate max-w-[120px]"
             >
-              Get-Quotation
+              Get Quote
             </Link>
           </motion.div>
         </nav>
 
-        {/* Mobile Button */}
-        <div className="lg:hidden z-10 relative">
+        {/* Mobile Menu Button */}
+        <div className="lg:hidden flex-shrink-0">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-md transition"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg glass border border-foreground/20 text-foreground hover:bg-foreground/10 transition"
             aria-label="Toggle Menu"
           >
-            {menuOpen ? "✕" : "☰"}
+            {mobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Nav */}
+      {/* Mobile Menu */}
       <AnimatePresence>
-        {menuOpen && (
+        {mobileMenuOpen && (
           <motion.nav
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="lg:hidden absolute top-full left-0 w-full bg-gradient-to-b from-brand-900/95 to-brand-700/95 backdrop-blur-xl border-t border-white/10 shadow-2xl z-20"
-            style={{ boxShadow: "0 15px 40px rgba(0,0,0,0.35)" }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="lg:hidden absolute top-full left-0 w-full bg-background/95 backdrop-blur-xl border-t border-foreground/10 z-20"
           >
-            <ul className="flex flex-col p-5 sm:p-6 space-y-3 sm:space-y-4 text-base sm:text-lg font-semibold text-white/90">
-              {["/", "About", "Services", "Contact"].map((item) => (
-                <motion.li
-                  key={item}
-                  whileHover={{ x: 10, color: "#FF5555", textShadow: "0 0 8px #FF0000" }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <Link href={`/${item.toLowerCase()}`} onClick={() => setMenuOpen(false)}>
-                    {item}
+            <ul className="flex flex-col p-4 sm:p-6 gap-2 sm:gap-3 text-base sm:text-lg font-semibold text-foreground/90">
+              {navItems.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    prefetch={item.prefetch}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-3 py-2 rounded hover:bg-primary/20 truncate"
+                  >
+                    {item.label}
                   </Link>
-                </motion.li>
+                </li>
               ))}
-              <motion.li whileHover={{ scale: 1.05 }}>
+              <li>
                 <Link
                   href="/quote"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 rounded-full bg-[#FF0000] text-white shadow-2xl text-center hover:scale-105 transition-transform"
-                  style={{ boxShadow: "0 8px 20px rgba(255,0,0,0.4), 0 4px 10px rgba(0,0,0,0.2)" }}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-center px-4 py-2 rounded-full btn-primary text-primary-foreground font-semibold hover:bg-primary/90 transition truncate"
                 >
-                  Get-Quotation
+                  Get Quote
                 </Link>
-              </motion.li>
+              </li>
             </ul>
           </motion.nav>
         )}
       </AnimatePresence>
     </motion.header>
   );
-}
+});
+
+Header.displayName = "Header";
+export default Header;

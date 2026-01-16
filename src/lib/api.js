@@ -1,48 +1,56 @@
-// lib/api.js
-import { getMediaUrl } from "./media";
-import { getBlogImage } from "./media";
+// project/frontend/src/lib/api.js
+import { getMediaUrl, getBlogImage } from "./media";
 
+/* =====================================================
+   Environment detection
+===================================================== */
 const isServer = typeof window === "undefined";
 const isDocker = process.env.DOCKER_ENV === "true";
 
-// ------------------------------------------------------------------
-// BASE API URL (Smart detection for SSR, Docker, and Browser)
-// ------------------------------------------------------------------
+/* =====================================================
+   API BASE (ALWAYS includes /api)
+===================================================== */
 export const API_BASE = isServer
   ? isDocker
-    ? process.env.DOCKER_INTERNAL_API_BASE || "http://backend:8000/api"
-    : process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"
-  : process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+    ? process.env.DOCKER_INTERNAL_API_BASE || "http://django_backend:8000/api"
+    : process.env.NEXT_PUBLIC_API_BASE || "https://northernpatches.com/api"
+  : process.env.NEXT_PUBLIC_API_BASE || "https://northernpatches.com/api";
 
-// ------------------------------------------------------------------
-// Unified fetch helper
-// ------------------------------------------------------------------
-export async function fetchJson(path, options = {}) {
-  try {
-    const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
-    console.log("🧠 Fetching URL:", url);
+/* =====================================================
+   Safe API URL builder
+===================================================== */
+function buildApiUrl(path = "") {
+  if (path.startsWith("http")) return path;
 
-    const res = await fetch(url, {
-      ...options,
-      cache: "no-store",
-    });
+  const cleanPath = path.startsWith("/api/")
+    ? path.replace(/^\/api/, "")
+    : path;
 
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(`API fetch failed: ${res.status} ${res.statusText} — ${errorText}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("❌ fetchJson error:", error.message);
-    return null;
-  }
+  return `${API_BASE}${cleanPath.startsWith("/") ? "" : "/"}${cleanPath}`;
 }
 
-// ------------------------------------------------------------------
-// Normalizers
-// ------------------------------------------------------------------
+/* =====================================================
+   Unified fetch helper
+===================================================== */
+export async function fetchJson(path, options = {}) {
+  const url = buildApiUrl(path);
 
+  const res = await fetch(url, {
+    ...options,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${text}`);
+  }
+
+  return res.json();
+}
+
+/* =====================================================
+   Normalizers
+===================================================== */
 export const normalizeSlide = slide =>
   slide
     ? {
@@ -59,32 +67,39 @@ export const normalizeService = service => {
 
   const gallery = (service.gallery ?? []).map(img => ({
     ...img,
-    image_url: getMediaUrl(img.image_url || img.image, "/placeholder-service.jpg"),
+    image_url: getMediaUrl(
+      img.image_url || img.image,
+      "/placeholder-service.jpg"
+    ),
   }));
 
   return {
     ...service,
     image_url: getMediaUrl(
-      service.image_url || service.image || service.thumbnail || service.cover_image,
+      service.image_url ||
+        service.image ||
+        service.thumbnail ||
+        service.cover_image,
       "/placeholder-service.jpg"
     ),
     gallery,
+    created_at: service.created_at, // <-- add this
+    updated_at: service.updated_at, // <-- add this
   };
 };
 
-export const normalizeBlog = (blog) =>
-  blog
-    ? {
-        ...blog,
-        cover_image_url: getBlogImage(blog),
-      }
-    : null;
+
+export const normalizeBlog = blog =>
+  blog ? { ...blog, cover_image_url: getBlogImage(blog) } : null;
 
 export const normalizePatchArtwork = artwork =>
   artwork
     ? {
         ...artwork,
-        file_url: getMediaUrl(artwork.file_url || artwork.image || artwork.path, "/placeholder.png"),
+        file_url: getMediaUrl(
+          artwork.file_url || artwork.image || artwork.path,
+          "/placeholder.png"
+        ),
       }
     : null;
 
@@ -92,49 +107,52 @@ export const normalizePatchRequest = patch =>
   patch
     ? {
         ...patch,
-        artworks: (patch.artworks ?? []).map(normalizePatchArtwork).filter(Boolean),
+        artworks: (patch.artworks ?? [])
+          .map(normalizePatchArtwork)
+          .filter(Boolean),
       }
     : null;
 
-// ------------------------------------------------------------------
-// Admin Login & Admin Auth Fetch
-// ------------------------------------------------------------------
+/* =====================================================
+   ADMIN AUTH (🔥 ONLY PLACE)
+===================================================== */
 export async function loginAdmin(username, password) {
-  if (typeof window === "undefined") return { success: false, error: "Client-only" };
-
-  try {
-    const res = await fetch(`${API_BASE}/obtain_admin_token/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data.token) {
-      return {
-        success: false,
-        error: data.detail || "Invalid credentials",
-      };
-    }
-
-    localStorage.setItem("adminToken", data.token);
-    return { success: true, token: data.token };
-  } catch {
-    return { success: false, error: "Network error" };
+  if (typeof window === "undefined") {
+    throw new Error("Client-only");
   }
+
+  const res = await fetch(buildApiUrl("/admin-token/"), { // ✅ Correct URL with dash
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.token) {
+    throw new Error(data.detail || "Invalid credentials");
+  }
+
+  localStorage.setItem("adminToken", data.token);
+  localStorage.setItem("adminName", username);
+
+  return data;
 }
 
 export async function adminFetch(path, options = {}) {
-  if (typeof window === "undefined") throw new Error("adminFetch must run on client");
+  if (typeof window === "undefined") {
+    throw new Error("adminFetch must run on client");
+  }
 
   const token = localStorage.getItem("adminToken");
+  if (!token) throw new Error("Not authenticated");
 
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: token ? `Token ${token}` : undefined,
-    "Content-Type": "application/json",
-  };
-
-  return fetchJson(path, { ...options, headers });
+  return fetchJson(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Token ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
 }

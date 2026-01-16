@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://northernpatches.com
+
+# Sitemaps
+Sitemap: https://northernpatches.com/sitemap.xml
