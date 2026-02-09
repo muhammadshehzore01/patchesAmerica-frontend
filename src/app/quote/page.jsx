@@ -39,7 +39,7 @@ export default function QuotePage() {
           Custom Patch Quote
         </p>
 
-        <h1 className="mt-4 text-4xl md:text-5xl font-extrabold gradient-heading hero-soft-shadow">
+        <h1 className="mt-4 text-4xl md:text-5xl font-extrabold text-heading text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 hero-soft-shadow">
           Get Your Patch Made Exactly Your Way
         </h1>
 

@@ -1,4 +1,6 @@
+// src/components/home/StepsSection.jsx
 "use client";
+
 import { motion } from "framer-motion";
 
 export default function StepsSection({ steps = [] }) {
@@ -14,7 +16,7 @@ export default function StepsSection({ steps = [] }) {
         transition={{ duration: 0.8 }}
         className="text-5xl md:text-6xl font-extrabold text-center mb-20"
       >
-        How It Works
+        How to Get Custom Patches USA
       </motion.h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10">
         {steps.map((s, i) => (

@@ -21,37 +21,45 @@ export const API_BASE = isServer
 ===================================================== */
 function buildApiUrl(path = "") {
   if (path.startsWith("http")) return path;
-
-  const cleanPath = path.startsWith("/api/")
-    ? path.replace(/^\/api/, "")
-    : path;
-
+  const cleanPath = path.startsWith("/api/") ? path.replace(/^\/api/, "") : path;
   return `${API_BASE}${cleanPath.startsWith("/") ? "" : "/"}${cleanPath}`;
 }
 
 /* =====================================================
-   Unified fetch helper
+   Unified fetch helper with ISR/revalidation
 ===================================================== */
 export async function fetchJson(path, options = {}) {
   const url = buildApiUrl(path);
 
+  // Determine revalidation strategy
+  let nextConfig = { revalidate: 0 }; // default: no cache
+  if (path.includes("/home") || path.includes("/services") || path.includes("/blogs")) {
+    nextConfig = { revalidate: 3600 }; // ISR: 1 hour for public content
+    // Can add tags later: { tags: ['home-data'] }
+  }
+
   const res = await fetch(url, {
     ...options,
-    cache: "no-store",
+    next: nextConfig,
+    cache: path.includes("/admin") || path.includes("/patch-requests") ? "no-store" : undefined,
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text}`);
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminName");
+      window.location.href = "/admin/login?expired=true";
+    }
+    throw new Error(`API ${res.status}: ${text || "Unknown error"}`);
   }
-
   return res.json();
 }
 
 /* =====================================================
-   Normalizers
+   Normalizers (enhanced with optional size)
 ===================================================== */
-export const normalizeSlide = slide =>
+export const normalizeSlide = (slide) =>
   slide
     ? {
         ...slide,
@@ -62,37 +70,28 @@ export const normalizeSlide = slide =>
       }
     : null;
 
-export const normalizeService = service => {
+export const normalizeService = (service) => {
   if (!service) return null;
-
-  const gallery = (service.gallery ?? []).map(img => ({
+  const gallery = (service.gallery ?? []).map((img) => ({
     ...img,
-    image_url: getMediaUrl(
-      img.image_url || img.image,
-      "/placeholder-service.jpg"
-    ),
+    image_url: getMediaUrl(img.image_url || img.image, "/placeholder-service.jpg"),
   }));
-
   return {
     ...service,
     image_url: getMediaUrl(
-      service.image_url ||
-        service.image ||
-        service.thumbnail ||
-        service.cover_image,
+      service.image_url || service.image || service.thumbnail || service.cover_image,
       "/placeholder-service.jpg"
     ),
     gallery,
-    created_at: service.created_at, // <-- add this
-    updated_at: service.updated_at, // <-- add this
+    created_at: service.created_at,
+    updated_at: service.updated_at,
   };
 };
 
-
-export const normalizeBlog = blog =>
+export const normalizeBlog = (blog) =>
   blog ? { ...blog, cover_image_url: getBlogImage(blog) } : null;
 
-export const normalizePatchArtwork = artwork =>
+export const normalizePatchArtwork = (artwork) =>
   artwork
     ? {
         ...artwork,
@@ -103,39 +102,32 @@ export const normalizePatchArtwork = artwork =>
       }
     : null;
 
-export const normalizePatchRequest = patch =>
+export const normalizePatchRequest = (patch) =>
   patch
     ? {
         ...patch,
-        artworks: (patch.artworks ?? [])
-          .map(normalizePatchArtwork)
-          .filter(Boolean),
+        artworks: (patch.artworks ?? []).map(normalizePatchArtwork).filter(Boolean),
       }
     : null;
 
 /* =====================================================
-   ADMIN AUTH (🔥 ONLY PLACE)
+   ADMIN AUTH
 ===================================================== */
 export async function loginAdmin(username, password) {
   if (typeof window === "undefined") {
     throw new Error("Client-only");
   }
-
-  const res = await fetch(buildApiUrl("/admin-token/"), { // ✅ Correct URL with dash
+  const res = await fetch(buildApiUrl("/admin-token/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-
   const data = await res.json().catch(() => ({}));
-
   if (!res.ok || !data.token) {
     throw new Error(data.detail || "Invalid credentials");
   }
-
   localStorage.setItem("adminToken", data.token);
   localStorage.setItem("adminName", username);
-
   return data;
 }
 
@@ -143,11 +135,10 @@ export async function adminFetch(path, options = {}) {
   if (typeof window === "undefined") {
     throw new Error("adminFetch must run on client");
   }
-
   const token = localStorage.getItem("adminToken");
   if (!token) throw new Error("Not authenticated");
 
-  return fetchJson(path, {
+  const res = await fetch(buildApiUrl(path), {
     ...options,
     headers: {
       ...(options.headers || {}),
@@ -155,4 +146,17 @@ export async function adminFetch(path, options = {}) {
       "Content-Type": "application/json",
     },
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminName");
+    window.location.href = "/admin/login?expired=true";
+    throw new Error("Session expired");
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Admin API ${res.status}: ${text}`);
+  }
+  return res.json();
 }

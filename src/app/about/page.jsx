@@ -69,7 +69,7 @@ function FAQAccordion({ faqs }) {
 
   return (
     <section className="mt-32 max-w-5xl mx-auto px-6">
-      <h2 className="text-4xl md:text-5xl font-extrabold text-center mb-12 text-brand-50">
+      <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 text-center mb-12 text-brand-50">
         Frequently Asked Questions
       </h2>
       <div className="space-y-4">
@@ -186,7 +186,7 @@ export default function AboutPage({ aboutData }) {
           <HeroAnimated>
             <div className="grid lg:grid-cols-2 gap-12 items-center bg-brand-800/90 rounded-3xl p-8 shadow-xl backdrop-blur-md">
               <div>
-                <h1 className="text-5xl md:text-6xl font-extrabold mb-6 leading-tight text-brand-50">{aboutData.title}</h1>
+                <h1 className="mt-4 text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">{aboutData.title}</h1>
                 <p className="text-lg md:text-xl text-brand-100 mb-8 leading-relaxed">{aboutData.description}</p>
               </div>
               <div className="relative w-full h-80 lg:h-[480px] rounded-3xl overflow-hidden shadow-lg">
@@ -205,22 +205,10 @@ export default function AboutPage({ aboutData }) {
             ))}
           </section>
 
-          {/* Partners (optional — remove section if not needed) */}
-          <section className="mt-32 text-center">
-            <h2 className="text-4xl font-extrabold text-brand-50 mb-10">Our Partners</h2>
-            <div className="flex flex-wrap justify-center items-center gap-8">
-              {aboutData.partners.map((p, i) => (
-                <div key={i} className="w-32 h-16 relative">
-                  <Image src={p} alt={`Partner ${i + 1}`} fill style={{ objectFit: "contain" }} />
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Mission */}
           <section className="mt-32 bg-gradient-to-b from-brand-800 to-brand-700 py-24 relative overflow-hidden rounded-3xl p-10 shadow-lg">
             <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto text-center relative z-10">
-              <h2 className="text-4xl md:text-5xl font-extrabold text-brand-50 mb-6">Our Mission</h2>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 text-brand-50 mb-6">Our Mission</h2>
               <p className="text-lg md:text-xl text-brand-100 leading-relaxed">
                 To deliver premium, USA-crafted custom patches that bring your vision to life with unmatched quality, fast production, and outstanding customer service — every stitch made with pride in America.
               </p>

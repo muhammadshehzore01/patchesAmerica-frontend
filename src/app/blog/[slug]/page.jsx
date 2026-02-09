@@ -1,23 +1,17 @@
-// project/frontend/src/app/blog/[slug]/page.jsx
-import { getMediaUrl } from "@/lib/media";
+// src/app/blog/[slug]/page.jsx
 import { notFound } from "next/navigation";
 import BlogDetailClient from "./BlogDetailClient";
+import { getMediaUrl } from "@/lib/media";
 
-export const dynamic = "force-dynamic";
-/* ===============================
-   SAFE FETCH
-================================ */
 async function safeFetchBlog(slug) {
   try {
     const API_BASE =
       process.env.DOCKER_ENV === "true"
         ? "http://django_backend:8000/api"
         : process.env.NEXT_PUBLIC_API_BASE || "https://northernpatches.com/api";
-
-    const res = await fetch(`${API_BASE}/blogs/${slug}/`, {
-      cache: "no-store", // 🔴 CRITICAL for Next.js 15
-    });
-
+    if (!slug) return null;
+    const url = `${API_BASE}/blogs/${slug}/`;
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -25,18 +19,14 @@ async function safeFetchBlog(slug) {
   }
 }
 
-/* ===============================
-   METADATA (SEO)
-================================ */
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }) {
   const slug = params?.slug;
   if (!slug) {
     return {
       title: "Blog Not Found | Northern Patches",
-      robots: {
-        index: false,
-        follow: false,
-      },
+      robots: "noindex",
     };
   }
 
@@ -48,96 +38,69 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const description =
-    blog.excerpt ||
-    blog.content?.replace(/<[^>]+>/g, "").slice(0, 160) ||
-    "";
-
-  const imageUrl = getMediaUrl(blog.cover_image_url || blog.image_url);
-
-  const canonical = `https://northernpatches.com/blog/${slug}`;
-
   return {
-    title: `${blog.title} | Northern Patches`,
-    description,
-    alternates: {
-      canonical,
-    },
+    title: blog.meta_title,
+    description: blog.meta_description,
+    keywords: blog.meta_keywords,
+    alternates: { canonical: `https://northernpatches.com/blog/${slug}` },
     openGraph: {
-      title: blog.title,
-      description,
-      url: canonical,
-      images: imageUrl ? [imageUrl] : [],
+      title: blog.meta_title,
+      description: blog.meta_description,
+      url: `https://northernpatches.com/blog/${slug}`,
+      images: blog.cover_image_url ? [{ url: blog.cover_image_url, width: 1200, height: 630 }] : [],
       type: "article",
+      locale: "en_US",
     },
     twitter: {
       card: "summary_large_image",
-      title: blog.title,
-      description,
-      images: imageUrl ? [imageUrl] : [],
+      title: blog.meta_title,
+      description: blog.meta_description,
+      images: blog.cover_image_url ? [blog.cover_image_url] : [],
+    },
+    other: {
+      "application/ld+json": JSON.stringify(blog.schema || {}),
     },
   };
 }
 
-/* ===============================
-   PAGE
-================================ */
 export default async function BlogDetail({ params }) {
   const slug = params?.slug;
   if (!slug) notFound();
-
   const blog = await safeFetchBlog(slug);
-  if (!blog) notFound(); // ✅ real 404
+  if (!blog) notFound();
 
-  const imageUrl = getMediaUrl(blog.cover_image_url || blog.image_url);
-
-  /* ===============================
-     BLOG SCHEMA (JSON-LD)
-  ================================ */
-  const blogSchema = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: blog.title,
-    description:
-      blog.excerpt ||
-      blog.content?.replace(/<[^>]+>/g, "").slice(0, 160),
-    image: imageUrl,
-    author: {
-      "@type": "Organization",
-      name: "Northern Patches",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "Northern Patches",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://northernpatches.com/logo.png",
-      },
-    },
-    datePublished: blog.published_at,
-    dateModified: blog.updated_at || blog.published_at,
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://northernpatches.com/blog/${slug}`,
-    },
-  };
+  const imageUrl = getMediaUrl(blog.cover_image_url || blog.image_url || "/og-default-blog.jpg");
 
   return (
-    <main className="relative z-10 min-h-screen">
-      {/* 🔥 STRUCTURED DATA */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(blogSchema),
-        }}
-      />
+    <main className="relative z-10 min-h-screen text-white pt-20 md:pt-24 lg:pt-28">
+      {/* Structured data already in generateMetadata – no duplicate */}
 
-      <BlogDetailClient
-        blog={{
-          ...blog,
-          image_url: imageUrl,
-        }}
-      />
+      <BlogDetailClient blog={{ ...blog, image_url: imageUrl }} />
+
+      {/* Related Services Section – new */}
+      {blog.related_services?.length > 0 && (
+        <section className="mt-16 border-t border-gray-800 pt-12 px-6 md:px-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">
+            Related Services
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {blog.related_services.map((service) => (
+              <a
+                key={service.slug}
+                href={`/services/${service.slug}`}
+                className="group block p-6 bg-gray-900/50 border border-gray-800 rounded-xl hover:border-blue-600 transition-all"
+              >
+                <h3 className="font-semibold text-lg group-hover:text-blue-400">
+                  {service.title}
+                </h3>
+                <p className="text-sm text-gray-400 mt-3 line-clamp-3">
+                  {service.description}
+                </p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
-}
+} 

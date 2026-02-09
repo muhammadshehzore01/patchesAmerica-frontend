@@ -1,25 +1,33 @@
+// src/components/Header.jsx
 "use client";
+
 import { useState, useEffect, forwardRef } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence, useScroll, useSpring, useTransform } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import { FiMenu, FiX } from "react-icons/fi";
-import { useHomeData } from "@/hooks/useApiHooks";
 
-const Header = forwardRef((props, ref) => {
-  const { services } = useHomeData();
+const Header = forwardRef(function Header(_, ref) {
+  const pathname = usePathname();
+
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const galleryHref =
-    services.length > 0 && services[0]?.slug
-      ? `/services/${services[0].slug}/gallery`
-      : "/gallery";
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const { scrollY } = useScroll();
-  const scrollYProgress = useSpring(scrollY, { stiffness: 100, damping: 20 });
-  const particleY = useTransform(scrollYProgress, [0, 500], [0, 50]);
+  const scrollYSpring = useSpring(scrollY, { stiffness: 120, damping: 20 });
+  const particleY = useTransform(scrollYSpring, [0, 500], [0, 50]);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -42,115 +50,141 @@ const Header = forwardRef((props, ref) => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ----------------------
-  // Navigation Items
-  // ----------------------
   const navItems = [
     { label: "Home", href: "/" },
     { label: "About", href: "/about" },
     { label: "Services", href: "/services" },
-    { label: "Gallery", href: galleryHref, prefetch: false }, // prefetch disabled
-    { label: "Blog", href: "/blog", prefetch: false }, // prefetch disabled
+    { label: "Gallery", href: "/services/gallery" },
+    { label: "Blog", href: "/blog" },
     { label: "Contact", href: "/contact" },
   ];
 
-  // ----------------------
-  // NavLink component
-  // ----------------------
-  const NavLink = ({ href, children, prefetch = true }) => (
-    <motion.div className="relative group" whileHover={{ y: -1 }}>
-      <Link
-        href={href}
-        prefetch={prefetch}
-        className="px-2 sm:px-3 py-[2px] sm:py-1 text-xs sm:text-sm md:text-base font-medium sm:font-semibold text-foreground/90 hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-[140px]"
-      >
-        {children}
-      </Link>
-      <motion.span
-        className="absolute left-0 bottom-0 h-[2px] bg-primary rounded-full"
-        variants={{ rest: { width: 0 }, hover: { width: "100%" } }}
-        transition={{ duration: 0.3 }}
-      />
-    </motion.div>
-  );
+  const handleQuoteClick = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "quote_click", {
+        event_category: "Header",
+        event_label: "Get Quote Button",
+        page_path: window.location.pathname,
+        value: 1,
+      });
+    }
+  };
 
-  // ----------------------
-  // Header JSX
-  // ----------------------
+  const NavLink = ({ href, children, prefetch = true }) => {
+    const isActive =
+      pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+
+    return (
+      <motion.div className="relative group" whileHover={{ y: -1 }}>
+        <Link
+          href={href}
+          prefetch={prefetch}
+          className={`px-2 sm:px-3 py-1 text-sm md:text-base font-semibold transition-colors ${
+            isActive
+              ? "text-white underline underline-offset-4 decoration-blue-400 decoration-2"
+              : "text-blue-300 hover:text-white"
+          }`}
+        >
+          {children}
+        </Link>
+        <motion.span
+          className="absolute left-0 bottom-0 h-[2px] bg-blue-400 rounded-full"
+          initial={{ width: 0 }}
+          whileHover={{ width: "100%" }}
+          transition={{ duration: 0.3 }}
+        />
+      </motion.div>
+    );
+  };
+
   return (
     <motion.header
       ref={ref}
+      role="banner"
+      aria-label="Main Navigation"
       initial={{ y: 0 }}
       animate={{ y: hidden ? "-110%" : "0%" }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className={`fixed top-0 inset-x-0 z-50 backdrop-blur-md transition-all duration-500
-        ${scrolled ? "bg-background/95 shadow-lg" : "bg-background/70"}`}
+      className={`fixed top-0 inset-x-0 z-50 backdrop-blur-md transition-all duration-500 ${
+        scrolled ? "bg-background/95 shadow-lg" : "bg-background/70"
+      }`}
     >
-      {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(5)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
           <motion.div
             key={i}
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/20 absolute blur-2xl"
-            style={{ top: `${20 + i * 12}%`, left: `${i * 15}%` }}
+            className="w-16 h-16 rounded-full bg-primary/20 absolute blur-2xl"
+            style={{ top: `${20 + i * 15}%`, left: `${i * 20}%` }}
             animate={{ y: [0, 10, 0] }}
-            transition={{ repeat: Infinity, duration: 10 + i * 2, ease: "easeInOut", delay: i }}
+            transition={{
+              repeat: Infinity,
+              duration: 10 + i * 2,
+              ease: "easeInOut",
+            }}
           />
         ))}
+
         <motion.div
-          className="w-24 h-24 sm:w-28 sm:h-28 bg-primary/30 rounded-full blur-3xl absolute top-8 left-1/2 -translate-x-1/2"
+          className="w-24 h-24 bg-primary/30 rounded-full blur-3xl absolute top-8 left-1/2 -translate-x-1/2"
           style={{ y: particleY }}
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center justify-between h-16 sm:h-20 z-10">
-        {/* Logo */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 relative rounded-full overflow-hidden ring-2 ring-foreground/30 shadow-lg">
-            <Image src="/usa-flag.jpg" alt="USA Flag" fill className="object-cover" priority />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 sm:h-20 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 relative rounded-full overflow-hidden ring-2 ring-foreground/30">
+            <Image
+              src="/usa-flag.jpg"
+              alt="USA Flag"
+              fill
+              className="object-cover"
+              priority
+            />
           </div>
-          <div className="flex flex-col leading-tight">
-            <Link href="/" className="text-sm sm:text-base md:text-lg font-bold truncate">
-              <span className="text-primary">Northern</span>
-              <span className="text-foreground">-Patches</span>
-              <span className="text-primary">-America</span>
-            </Link>
-            <span className="text-[9px] sm:text-xs text-muted-foreground hidden sm:block truncate">
-              Made for United States | Premium Quality
-            </span>
-          </div>
+
+          <Link
+            href="/"
+            className="font-bold text-base sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400"
+          >
+            <span className="text-primary">Northern</span>
+            <span className="text-foreground"> Patches</span>
+            <span className="text-primary"> America</span>
+          </Link>
         </div>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-2 sm:gap-4 md:gap-6 flex-shrink">
+        <nav
+          className="hidden lg:flex items-center gap-6"
+          aria-label="Primary Navigation"
+        >
           {navItems.map((item) => (
-            <NavLink key={item.label} href={item.href} prefetch={item.prefetch}>
+            <NavLink
+              key={item.label}
+              href={item.href}
+              prefetch={item.label !== "Gallery"}
+            >
               {item.label}
             </NavLink>
           ))}
-          <motion.div whileHover={{ scale: 1.05 }} className="flex-shrink-0">
-            <Link
-              href="/quote"
-              className="px-3 sm:px-4 py-1 sm:py-2 rounded-full btn-primary text-primary-foreground font-semibold shadow-lg transition text-xs sm:text-sm truncate max-w-[120px]"
-            >
-              Get Quote
-            </Link>
-          </motion.div>
+
+          <Link
+            href="/quote"
+            onClick={handleQuoteClick}
+            className="px-4 py-2 rounded-full bg-blue-700 text-white font-semibold shadow-lg hover:bg-blue-800 transition-colors"
+          >
+            Get Quote
+          </Link>
         </nav>
 
-        {/* Mobile Menu Button */}
-        <div className="lg:hidden flex-shrink-0">
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg glass border border-foreground/20 text-foreground hover:bg-foreground/10 transition"
-            aria-label="Toggle Menu"
-          >
-            {mobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
-          </button>
-        </div>
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          className="lg:hidden p-2 rounded-lg glass border border-foreground/20"
+          aria-label="Toggle navigation menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+        </button>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.nav
@@ -158,26 +192,26 @@ const Header = forwardRef((props, ref) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="lg:hidden absolute top-full left-0 w-full bg-background/95 backdrop-blur-xl border-t border-foreground/10 z-20"
+            className="lg:hidden bg-background/95 backdrop-blur-xl border-t border-foreground/10"
+            aria-label="Mobile Navigation"
           >
-            <ul className="flex flex-col p-4 sm:p-6 gap-2 sm:gap-3 text-base sm:text-lg font-semibold text-foreground/90">
+            <ul className="flex flex-col p-4 gap-3 text-base font-semibold">
               {navItems.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    prefetch={item.prefetch}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded hover:bg-primary/20 truncate"
+                    className="block px-3 py-2 rounded hover:bg-primary/20"
                   >
                     {item.label}
                   </Link>
                 </li>
               ))}
+
               <li>
                 <Link
                   href="/quote"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block w-full text-center px-4 py-2 rounded-full btn-primary text-primary-foreground font-semibold hover:bg-primary/90 transition truncate"
+                  onClick={handleQuoteClick}
+                  className="block text-center px-4 py-2 rounded-full bg-blue-700 text-white font-semibold hover:bg-blue-800 transition-colors"
                 >
                   Get Quote
                 </Link>
@@ -190,5 +224,4 @@ const Header = forwardRef((props, ref) => {
   );
 });
 
-Header.displayName = "Header";
 export default Header;

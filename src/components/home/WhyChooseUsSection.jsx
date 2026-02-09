@@ -20,7 +20,7 @@ export default function WhyChooseUsSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="text-5xl md:text-6xl font-extrabold text-center mb-20 max-w-7xl mx-auto px-6"
+        className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 text-center mb-20 max-w-7xl mx-auto px-6"
       >
         Why Choose Northern Patches
       </motion.h2>
@@ -38,7 +38,7 @@ export default function WhyChooseUsSection() {
               className="glass p-10 text-center rounded-3xl shadow-lg"
             >
               <Icon className="mx-auto text-5xl text-[var(--color-accent)] mb-6" />
-              <h3 className="text-2xl font-semibold mb-4">{item.title}</h3>
+              <h3 className="text-2xl font-semibold mb-4 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">{item.title}</h3>
               <p className="text-[var(--color-text-secondary)] text-base">{item.desc}</p>
             </motion.div>
           );

@@ -46,7 +46,7 @@ export default function Footer() {
                   className="object-cover"
                 />
               </div>
-              <h4 className="text-2xl font-bold tracking-tight">
+              <h4 className="text-2xl font-bold tracking-tight font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
                 Northern Patches
               </h4>
             </div>
@@ -63,7 +63,7 @@ export default function Footer() {
             transition={{ duration: 0.7, delay: 0.1 }}
             className="flex flex-col items-center md:items-start text-center md:text-left"
           >
-            <h5 className="text-xl font-semibold mb-5">Quick Links</h5>
+            <h5 className="text-xl font-semibold mb-5 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">Quick Links</h5>
             <ul className="space-y-3 text-[var(--color-text-secondary)]">
               {QUICK_LINKS.map((link) => (
                 <li key={link.name}>
@@ -85,8 +85,8 @@ export default function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.2 }}
             className="flex flex-col items-center md:items-start text-center md:text-left"
-          >
-            <h5 className="text-xl font-semibold mb-5">Get in Touch</h5>
+          > 
+            <h5 className="text-xl font-semibold mb-5 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">Get in Touch</h5>
 
             <div className="space-y-4 text-[var(--color-text-secondary)] text-base">
               <div className="flex items-center gap-3 justify-center md:justify-start">

@@ -22,7 +22,7 @@ function FAQAccordion({ faqs }) {
 
   return (
     <section className="mt-28 mb-32 max-w-5xl mx-auto px-4 sm:px-6">
-      <h2 className="text-3xl md:text-5xl font-extrabold text-center mb-12 bg-gradient-to-r from-brand-200 to-brand-400 bg-clip-text text-white text-transparent">
+      <h2 className="text-3xl md:text-5xl font-extrabold text-center mb-12 bg-gradient-to-r from-brand-200 to-brand-400 bg-clip-text font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
         Frequently Asked Questions
       </h2>
 
@@ -146,7 +146,7 @@ export default function ContactPage() {
       <main className="relative min-h-screen bg-gradient-to-b from-brand-900 via-brand-800 to-brand-700 text-brand-50">
         {/* Hero */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 py-24 text-center">
-          <h1 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-brand-100 to-brand-400 bg-clip-text text-white text-transparent">
+          <h1 className="mt-4 text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
             Contact Northern Patches
           </h1>
           <p className="mt-6 text-brand-200 text-base md:text-lg">

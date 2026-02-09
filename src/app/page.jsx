@@ -1,43 +1,94 @@
+// src/app/page.jsx
 import HomePageClient from "./HomePageClient";
 
-export const metadata = {
-  title: "Northern Patches — Premium Custom Patches | USA Made & Fast Shipping",
-  description: "Create high-quality custom embroidered, PVC, chenille, woven & leather patches. No minimums, fast US turnaround, premium materials for teams, brands & events.",
-  keywords: "custom patches, embroidered patches, PVC patches, chenille patches, custom apparel patches, USA patches, morale patches, logo patches, military patches, team patches",
-  robots: "index, follow",
-  openGraph: {
-    title: "Northern Patches — Premium Custom Patches",
-    description: "Design your custom patches today – embroidered, PVC, chenille & more. Fast shipping across USA.",
-    url: "https://northernpatches.com",
-    images: ["/og-home.jpg"],
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Northern Patches — Premium Custom Patches",
-    description: "Design your custom patches today – embroidered, PVC, chenille & more.",
-    images: ["/og-home.jpg"],
-  },
-};
+export async function generateMetadata() {
+  const canonicalUrl = "https://northernpatches.com/";
+
+  return {
+    title: "Custom Patches USA | No Minimum Order & Fast Shipping | Northern Patches",
+    description:
+      "Premium custom embroidered patches USA, custom PVC patches no minimum, custom chenille patches, custom woven patches, custom leather patches for jackets, hats, bags, military, sports teams & businesses. Fast US shipping, high-quality USA-made.",
+    keywords:
+      "custom patches USA, custom embroidered patches USA, custom PVC patches no minimum, custom chenille patches, custom woven patches USA, custom leather patches no minimum, custom patches for jackets USA, custom military patches, custom sports team patches USA, fast shipping patches USA, no minimum custom patches, patches for hats USA, custom patches for bags USA",
+    robots: "index, follow",
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: "Northern Patches America – Custom Patches USA | No Minimum",
+      description:
+        "Design premium custom embroidered, PVC, chenille, woven & leather patches. No minimum order, fast USA production & shipping. Free quote today!",
+      url: canonicalUrl,
+      siteName: "Northern Patches",
+      images: [
+        {
+          url: "/og-home.jpg",
+          width: 1200,
+          height: 630,
+          alt: "Custom patches gallery – Northern Patches USA",
+        },
+      ],
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Northern Patches America – Custom Patches USA",
+      description:
+        "Premium custom patches: embroidered, PVC, chenille & more. No minimum, fast US shipping.",
+      images: ["/og-home.jpg"],
+    },
+  };
+}
 
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Organization",
-      name: "Northern Patches",
-      url: "https://northernpatches.com",
-      logo: "https://northernpatches.com/logo.png",
+      name: "Northern Patches America",
+      url: "https://northernpatches.com/",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://northernpatches.com/logo.png",
+      },
+      sameAs: [
+        "https://www.facebook.com/northernpatches",
+        "https://www.instagram.com/northernpatches",
+        "https://twitter.com/northernpatches",
+      ],
     },
     {
       "@type": "WebSite",
-      name: "Northern Patches",
-      url: "https://northernpatches.com",
+      name: "Northern Patches America",
+      url: "https://northernpatches.com/",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://northernpatches.com/search?q={search_term_string}",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: "https://northernpatches.com/search?q={search_term_string}",
+        },
         "query-input": "required name=search_term_string",
       },
+    },
+    {
+      "@type": "LocalBusiness",
+      name: "Northern Patches America",
+      url: "https://northernpatches.com/",
+      telephone: "+1-800-123-4567", // ← Replace with real number when ready
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "123 Patch Lane",
+        addressLocality: "New York",
+        addressRegion: "NY",
+        postalCode: "10001",
+        addressCountry: "US",
+      },
+    },
+    {
+      "@type": "ItemList",
+      name: "Featured Custom Patch Services USA",
+      itemListElement: [], // Can be dynamically populated if needed
     },
   ],
 };
@@ -45,7 +96,21 @@ const structuredData = {
 export default function Home() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      {/* Structured data – Schema.org for SEO & rich results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
+      {/* Critical preconnects – improves performance for external resources */}
+      <link rel="preconnect" href="https://northernpatches.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
+
+      {/* NO manual preloads needed anymore */}
+      {/* - Fonts: handled automatically by next/font/google (Inter & Poppins) */}
+      {/* - Hero image: handled by <Image priority> in HeroSlider.jsx */}
+      {/* This eliminates 404 font error and preload warning */}
+
       <HomePageClient />
     </>
   );

@@ -1,11 +1,26 @@
+// src/components/PatchRequestWizard.jsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiUploadCloud } from "react-icons/fi";
+import { FiUploadCloud, FiX, FiLoader, FiCheckCircle } from "react-icons/fi";
 
-// Step titles
+/* =========================
+   GA4 SAFE EVENT HELPER WITH RETRY
+========================= */
+const gaEvent = (name, params = {}, retries = 5, delay = 500) => {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", name, params);
+    console.log("✅ GA4 event fired:", name, params);
+  } else if (retries > 0) {
+    setTimeout(() => gaEvent(name, params, retries - 1, delay), delay);
+  }
+};
+
+/* =========================
+   STEP TITLES & CONSTANTS
+========================= */
 const STEP_TITLES = [
   "Contact Info",
   "Patch Details & Size",
@@ -13,7 +28,6 @@ const STEP_TITLES = [
   "Preview & Submit"
 ];
 
-// Shape thumbnails
 const shapeThumbs = {
   custom: "/assets/shapes/custom.png",
   circle: "/assets/shapes/circle.png",
@@ -29,7 +43,6 @@ const shapeThumbs = {
   "shield-d": "/assets/shapes/shield-d.png"
 };
 
-// Backing thumbnails
 const backingThumbs = {
   none: "/assets/backings/no-backing.jpg",
   iron: "/assets/backings/iron-on.png",
@@ -41,7 +54,6 @@ const backingThumbs = {
   "safety-pin": "/assets/backings/safety-pin.jpeg"
 };
 
-// Leather type thumbnails
 const leatherThumbs = {
   genuine: "/assets/leather/genuine.png",
   faux: "/assets/leather/faux.png",
@@ -49,7 +61,6 @@ const leatherThumbs = {
   rustic: "/assets/leather/rustic.png"
 };
 
-// Finish effect thumbnails
 const finishThumbs = {
   embossed: "/assets/finish/embossed.png",
   debossed: "/assets/finish/debossed.png",
@@ -57,39 +68,52 @@ const finishThumbs = {
   printed: "/assets/finish/printed.png"
 };
 
-// Options
 const borderOptions = ["merrow", "heat-cut", "laser-cut"];
 const threadOptions = ["normal", "gold", "silver", "glow"];
-const quantityChoices = ["10","25","50","75","100","150","300","500","1000","3000","5000+"];
+const quantityChoices = ["10", "25", "50", "75", "100", "150", "300", "500", "1000", "3000", "5000+"];
 const dimensionOptions = ["2D", "3D"];
 const embroideryCoverageOptions = ["50%", "75%", "100%"];
-const leatherTypes = Object.keys(leatherThumbs);
-const finishEffects = Object.keys(finishThumbs);
 
-export default function PatchRequestWizard({ apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000" }) {
+export default function PatchRequestWizard({
+  apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+}) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
-    name: "", email: "", phone: "",
-    patch_type: "embroidered", embroidery_coverage: "50%",
-    dimension: "2D", leather_type: "genuine", finish_effect: "embossed",
-    unit: "inches", width: "", height: "",
-    shape: "custom", backing: "none", border: "merrow",
-    thread: "normal", quantity: "", custom_qty: "", message: ""
+    name: "",
+    email: "",
+    phone: "",
+    patch_type: "embroidered",
+    embroidery_coverage: "50%",
+    dimension: "2D",
+    leather_type: "genuine",
+    finish_effect: "embossed",
+    unit: "inches",
+    width: "",
+    height: "",
+    shape: "custom",
+    backing: "none",
+    border: "merrow",
+    thread: "normal",
+    quantity: "",
+    custom_qty: "",
+    message: ""
   });
+
   const [files, setFiles] = useState([]);
   const [filePreviews, setFilePreviews] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [errors, setErrors] = useState({});
+
   const fileRef = useRef();
 
-  // File previews
+  // Memoized previews to avoid re-creating URLs unnecessarily
+  const previews = useMemo(() => files.map(f => URL.createObjectURL(f)), [files]);
+
   useEffect(() => {
-    filePreviews.forEach(url => URL.revokeObjectURL(url));
-    const previews = files.map(f => URL.createObjectURL(f));
     setFilePreviews(previews);
-    return () => previews.forEach(url => URL.revokeObjectURL(url));
-  }, [files]);
+    return () => previews.forEach(URL.revokeObjectURL);
+  }, [previews]);
 
   const update = (key, value) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -97,76 +121,118 @@ export default function PatchRequestWizard({ apiBase = process.env.NEXT_PUBLIC_A
   };
 
   const handleFiles = e => {
-    const chosen = Array.from(e.target.files || []).slice(0, 10);
-    setFiles(chosen);
+    const chosen = Array.from(e.target.files || [])
+      .filter(f => f.type.startsWith("image/") || f.type === "application/pdf")
+      .slice(0, 5); // UX limit
+    setFiles(prev => [...prev, ...chosen]);
+  };
+
+  const removeFile = index => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const clearFiles = () => {
-    filePreviews.forEach(url => URL.revokeObjectURL(url));
-    setFilePreviews([]);
     setFiles([]);
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  /* =========================
+     STEP VALIDATION
+  ========================= */
   const validateStep = s => {
     const newErrors = {};
+
     if (s === 0) {
       if (!form.name.trim()) newErrors.name = "Name is required";
-      if (!form.email.trim()) newErrors.email = "Email is required";
-      else { const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; if (!re.test(form.email)) newErrors.email = "Invalid email"; }
-    }
-    if (s === 1) {
-      if ((form.patch_type === "leather" || form.patch_type === "pvc") && !form.width.trim()) newErrors.width = "Width is required";
-      if ((form.patch_type === "leather" || form.patch_type === "pvc") && !form.height.trim()) newErrors.height = "Height is required";
-      if (form.patch_type === "embroidered" && !form.embroidery_coverage) newErrors.embroidery_coverage = "Select coverage";
-      if (form.patch_type === "leather") {
-        if (!form.leather_type) newErrors.leather_type = "Select leather type";
-        if (!form.finish_effect) newErrors.finish_effect = "Select finish effect";
+      if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) {
+        newErrors.email = "Valid email is required";
       }
-      if (form.patch_type === "pvc" && !form.dimension) newErrors.dimension = "Select dimension";
     }
+
+    if (s === 1) {
+      if (!form.width || isNaN(Number(form.width)) || Number(form.width) <= 0) {
+        newErrors.width = "Valid width required";
+      }
+      if (!form.height || isNaN(Number(form.height)) || Number(form.height) <= 0) {
+        newErrors.height = "Valid height required";
+      }
+    }
+
     if (s === 2) {
-      if (!form.quantity && !form.custom_qty) newErrors.quantity = "Select or enter quantity";
+      if (!form.quantity && !form.custom_qty) {
+        newErrors.quantity = "Select or enter quantity";
+      }
+      if (form.custom_qty && (isNaN(Number(form.custom_qty)) || Number(form.custom_qty) < 1)) {
+        newErrors.custom_qty = "Valid number required";
+      }
     }
-    setErrors(prev => ({ ...prev, ...newErrors }));
-    return Object.keys(newErrors).length === 0;
-  };
 
-  const next = () => { if (validateStep(step)) setStep(s => Math.min(s+1, STEP_TITLES.length-1)); };
-  const prev = () => setStep(s => Math.max(s-1, 0));
-
-  const validateAll = () => {
-    const newErrors = {};
-    if (!form.name.trim()) newErrors.name = "Name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else { const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; if (!re.test(form.email)) newErrors.email = "Invalid email"; }
-    if ((form.patch_type === "leather" || form.patch_type === "pvc") && !form.width.trim()) newErrors.width = "Width is required";
-    if ((form.patch_type === "leather" || form.patch_type === "pvc") && !form.height.trim()) newErrors.height = "Height is required";
-    if (form.patch_type === "embroidered" && !form.embroidery_coverage) newErrors.embroidery_coverage = "Select coverage";
-    if (form.patch_type === "leather") {
-      if (!form.leather_type) newErrors.leather_type = "Select leather type";
-      if (!form.finish_effect) newErrors.finish_effect = "Select finish effect";
-    }
-    if (form.patch_type === "pvc" && !form.dimension) newErrors.dimension = "Select dimension";
-    if (!form.quantity && !form.custom_qty) newErrors.quantity = "Select or enter quantity";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const submit = async () => {
-    setResult(null);
-    if (!validateAll()) return;
-    try {
-      setSubmitting(true);
-      const formData = new FormData();
-      for (let key of ["name","email","phone","patch_type","embroidery_coverage","dimension","leather_type","finish_effect","unit","width","height","shape","backing","border","thread","message"]) {
-        formData.append(key, form[key] || "");
-      }
-      if (form.custom_qty) formData.append("custom_qty", form.custom_qty);
-      else formData.append("quantity", form.quantity);
-      files.forEach(f => formData.append("artworks", f));
-      const response = await axios.post(`${apiBase}/patch-requests/`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+  const next = () => {
+    if (validateStep(step)) {
+      setStep(s => Math.min(s + 1, STEP_TITLES.length - 1));
+      gaEvent("wizard_step_advance", { step: step + 1 });
+    }
+  };
 
+  const prev = () => {
+    setStep(s => Math.max(s - 1, 0));
+    gaEvent("wizard_step_back", { step: step });
+  };
+
+  /* =========================
+     FINAL SUBMIT + GA4 CONVERSION
+  ========================= */
+  const submit = async () => {
+    if (!validateStep(2)) return;
+
+    setSubmitting(true);
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+
+      // Append text fields
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== "" && v !== null && k !== "artworks") {
+          formData.append(k, v);
+        }
+      });
+
+      // Ensure numeric values
+      if (form.width) formData.set("width", Number(form.width));
+      if (form.height) formData.set("height", Number(form.height));
+      if (form.custom_qty) {
+        formData.set("custom_qty", Number(form.custom_qty));
+        formData.delete("quantity");
+      }
+
+      // Append files
+      files.forEach(f => formData.append("artworks", f));
+
+      const res = await axios.post(`${apiBase}/patch-requests/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      // Fire GA4 conversion event
+      gaEvent("generate_lead", {
+        event_category: "Conversion",
+        event_label: "Patch Request Submitted",
+        patch_type: form.patch_type,
+        quantity: form.custom_qty || form.quantity,
+        has_artwork: files.length > 0 ? "yes" : "no",
+        value: 1 // optional: assign estimated lead value
+      });
+
+      setResult({
+        ok: true,
+        message: "Your patch request has been submitted successfully!"
+      });
+
+      // Reset form after success
       setForm({
         name: "", email: "", phone: "",
         patch_type: "embroidered", embroidery_coverage: "50%",
@@ -175,259 +241,527 @@ export default function PatchRequestWizard({ apiBase = process.env.NEXT_PUBLIC_A
         shape: "custom", backing: "none", border: "merrow",
         thread: "normal", quantity: "", custom_qty: "", message: ""
       });
-      clearFiles();
-      setErrors({});
-      setResult({ ok: true, data: response.data });
+      setFiles([]);
       setStep(0);
+
     } catch (err) {
-      const errData = err.response?.data || {};
-      if (errData.errors) setErrors(prev => ({ ...prev, ...errData.errors }));
-      setResult({ error: errData.detail || err.message || "Unknown error" });
-    } finally { setSubmitting(false); }
+      console.error(err);
+      setResult({
+        error: err.response?.data?.errors || err.message || "Submission failed. Please try again."
+      });
+      gaEvent("form_error", {
+        event_category: "Form",
+        event_label: "Patch Request Failed",
+        error: err.message?.slice(0, 100)
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // === YOUR THEME CSS CLASSES ===
-  const inputClass = "p-3 rounded-2xl bg-gradient-to-r from-[#00113F] to-[#0B1ACD] border border-white/10 text-white placeholder-white/50 focus:ring-2 focus:ring-cyan-400 outline-none w-full text-sm sm:text-base transition shadow-neon";
-  const selectClass = "p-3 rounded-2xl bg-blue-900 text-white border border-white/10 focus:ring-2 focus:ring-cyan-400 outline-none w-full text-sm sm:text-base appearance-none shadow-neon";
-  const buttonClass = "px-6 py-2 rounded-full text-white border border-white/10 bg-cyan-500/30 hover:bg-cyan-600 hover:scale-105 transition-all duration-200 shadow-neon";
+  /* =========================
+     UI CLASSES (consistent & reusable)
+  ========================= */
+  const inputClass = "p-3 rounded-2xl bg-gradient-to-r from-[#00113F] to-[#0B1ACD] border border-white/10 text-white placeholder-white/50 focus:ring-2 focus:ring-cyan-400 outline-none w-full transition";
+  const selectClass = "p-3 rounded-2xl bg-blue-900 text-white border border-white/10 focus:ring-2 focus:ring-cyan-400 outline-none w-full appearance-none transition";
+  const buttonClass = "px-6 py-2 rounded-full text-white border border-white/10 bg-cyan-500/30 hover:bg-cyan-600 transition shadow-[0_0_12px_cyan] disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
       <div className="px-3 py-4 sm:p-4">
         {/* Step Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
           <div>
-            <div className="text-xs text-white/60">Step {step+1} of {STEP_TITLES.length}</div>
+            <div className="text-xs text-white/60">Step {step + 1} of {STEP_TITLES.length}</div>
             <h3 className="text-xl sm:text-2xl font-extrabold text-cyan-400 tracking-tight">{STEP_TITLES[step]}</h3>
           </div>
           <div className="hidden sm:flex items-center gap-3">
             {STEP_TITLES.map((_, i) => (
-              <div key={i} className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold ${i<=step ? "bg-cyan-600 text-white shadow-[0_0_8px_cyan]" : "bg-white/10 text-white/60"} transition`}>{i+1}</div>
+              <div
+                key={i}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition ${
+                  i <= step ? "bg-cyan-600 text-white shadow-[0_0_8px_cyan]" : "bg-white/10 text-white/60"
+                }`}
+              >
+                {i + 1}
+              </div>
             ))}
           </div>
         </div>
 
-        <form onKeyDown={e=>{ if(e.key==="Enter" && e.target.tagName!=="TEXTAREA") e.preventDefault(); }} onSubmit={e=>e.preventDefault()} className="space-y-5 pb-28 sm:pb-6">
+        <form
+          onKeyDown={e => { if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") e.preventDefault(); }}
+          onSubmit={e => e.preventDefault()}
+          className="space-y-5 pb-28 sm:pb-6"
+        >
           <AnimatePresence mode="wait">
-            {/* STEP 0 */}
-            {step===0 && (
-              <motion.div key="step-0" initial={{opacity:0,x:10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-10}} className="space-y-4">
-                <input className={inputClass} placeholder="Full name *" value={form.name} onChange={e=>update("name", e.target.value)} />
-                {errors.name && <div className="text-rose-400 text-sm">{errors.name}</div>}
-                <input className={inputClass} placeholder="Email *" type="email" value={form.email} onChange={e=>update("email", e.target.value)} />
-                {errors.email && <div className="text-rose-400 text-sm">{errors.email}</div>}
-                <input className={inputClass} placeholder="Phone" value={form.phone} onChange={e=>update("phone", e.target.value)} />
-                <textarea className={`${inputClass} min-h-[110px]`} placeholder="Order comments (optional)" value={form.message} onChange={e=>update("message", e.target.value)} />
+            {/* STEP 0: Contact Info */}
+            {step === 0 && (
+              <motion.div
+                key="step-0"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
+              >
+                <div>
+                  <input
+                    className={`${inputClass} ${errors.name ? "border-rose-500" : ""}`}
+                    placeholder="Full name *"
+                    value={form.name}
+                    onChange={e => update("name", e.target.value)}
+                    aria-invalid={!!errors.name}
+                    aria-describedby={errors.name ? "name-error" : undefined}
+                  />
+                  {errors.name && <p id="name-error" className="text-rose-400 text-sm mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                  <input
+                    className={`${inputClass} ${errors.email ? "border-rose-500" : ""}`}
+                    placeholder="Email *"
+                    type="email"
+                    value={form.email}
+                    onChange={e => update("email", e.target.value)}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
+                  />
+                  {errors.email && <p id="email-error" className="text-rose-400 text-sm mt-1">{errors.email}</p>}
+                </div>
+                <input
+                  className={inputClass}
+                  placeholder="Phone (optional)"
+                  value={form.phone}
+                  onChange={e => update("phone", e.target.value)}
+                />
+                <textarea
+                  className={`${inputClass} min-h-[110px]`}
+                  placeholder="Order comments or special instructions (optional)"
+                  value={form.message}
+                  onChange={e => update("message", e.target.value)}
+                />
               </motion.div>
             )}
 
-            {/* STEP 1 */}
-            {/* STEP 1 */}
-            {step===1 && (
-              <motion.div key="step-1" initial={{opacity:0,x:10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-10}} className="space-y-4">
-                <label className="text-sm text-white/70">Patch type</label>
-                <select className={selectClass} value={form.patch_type} onChange={e=>update("patch_type", e.target.value)}>
-                  <option value="embroidered">Embroidered</option>
-                  <option value="leather">Leather</option>
-                  <option value="chenille">Chenille</option>
-                  <option value="printed">Printed</option>
-                  <option value="pvc">PVC</option>
-                  <option value="woven">Woven</option>
-                  <option value="custom">Custom / Stickers</option>
-                </select>
-
-                {/* Embroidery coverage */}
-                {form.patch_type === "embroidered" && (
-                  <>
-                    <label className="text-sm text-white/70 mt-2">Embroidery coverage</label>
-                    <select className={selectClass} value={form.embroidery_coverage} onChange={e=>update("embroidery_coverage", e.target.value)}>
-                      {embroideryCoverageOptions.map(v => <option key={v} value={v}>{v} Embroidered</option>)}
-                    </select>
-                  </>
-                )}
-
-                {/* Leather specific */}
-                {form.patch_type === "leather" && (
-                  <>
-                    <label className="text-sm text-white/70 mt-2">Leather Type</label>
-                    <select className={selectClass} value={form.leather_type} onChange={e=>update("leather_type", e.target.value)}>
-                      {leatherTypes.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
-                    </select>
-
-                    <label className="text-sm text-white/70 mt-2">Finish Effect</label>
-                    <select className={selectClass} value={form.finish_effect} onChange={e=>update("finish_effect", e.target.value)}>
-                      {finishEffects.map(f => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
-                    </select>
-                  </>
-                )}
-
-                {/* Width/Height/Unit */}
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center mt-2">
-                  <select className={`${selectClass} w-full`} value={form.unit} onChange={e=>update("unit", e.target.value)}>
-                    <option value="inches">Inches</option>
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
+            {/* STEP 1: Patch Details & Size */}
+            {step === 1 && (
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-5"
+              >
+                <div>
+                  <label className="text-sm text-white/70 block mb-1">Patch type *</label>
+                  <select
+                    className={selectClass}
+                    value={form.patch_type}
+                    onChange={e => update("patch_type", e.target.value)}
+                  >
+                    <option value="embroidered">Embroidered</option>
+                    <option value="leather">Leather</option>
+                    <option value="chenille">Chenille</option>
+                    <option value="printed">Printed</option>
+                    <option value="pvc">PVC</option>
+                    <option value="woven">Woven</option>
+                    <option value="custom">Custom / Stickers</option>
                   </select>
-                  <input className={inputClass} placeholder="Width *" value={form.width} onChange={e=>update("width", e.target.value)} />
-                  <input className={inputClass} placeholder="Height *" value={form.height} onChange={e=>update("height", e.target.value)} />
                 </div>
-                
 
-                {/* PVC dimension select */}
-                {form.patch_type === "pvc" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 items-center mt-2">
-                    <label className="text-sm text-white/70">Dimension</label>
-                    <select className={selectClass} value={form.dimension} onChange={e=>update("dimension", e.target.value)}>
-                      {dimensionOptions.map(d => <option key={d} value={d}>{d} Mold</option>)}
+                {form.patch_type === "embroidered" && (
+                  <div>
+                    <label className="text-sm text-white/70 block mb-1">Embroidery coverage</label>
+                    <select
+                      className={selectClass}
+                      value={form.embroidery_coverage}
+                      onChange={e => update("embroidery_coverage", e.target.value)}
+                    >
+                      {embroideryCoverageOptions.map(v => (
+                        <option key={v} value={v}>{v} Embroidered</option>
+                      ))}
                     </select>
                   </div>
                 )}
 
-                {/* Artwork upload */}
-                <div className="mt-2">
-                  <label className="text-sm text-white/70 mb-1 block">Upload artwork (optional)</label>
-                  <div className="flex flex-col sm:flex-row gap-3 border border-dashed border-white/10 rounded-2xl p-3">
-                    <div className="p-3 rounded-lg bg-white/4 flex items-center justify-center min-w-[60px]">
-                      <FiUploadCloud className="text-cyan-400 text-2xl" />
+                {form.patch_type === "leather" && (
+                  <>
+                    <div>
+                      <label className="text-sm text-white/70 block mb-1">Leather Type</label>
+                      <select
+                        className={selectClass}
+                        value={form.leather_type}
+                        onChange={e => update("leather_type", e.target.value)}
+                      >
+                        {Object.keys(leatherThumbs).map(l => (
+                          <option key={l} value={l}>
+                            {l.charAt(0).toUpperCase() + l.slice(1)}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="flex-1 flex flex-col gap-2">
-                      <input id="patch-files" ref={fileRef} type="file" multiple accept=".png,.jpg,.jpeg,.svg,.pdf" onChange={handleFiles} className="hidden" />
-                      <div className="flex items-center gap-2">
-                        <label htmlFor="patch-files" className="px-3 py-2 rounded-full bg-white/10 text-white cursor-pointer hover:bg-cyan-600 transition text-sm">Choose files</label>
-                        {files.length>0 && <button type="button" onClick={clearFiles} className="text-sm px-2 py-1 rounded-md bg-white/6 hover:bg-white/10 transition">Clear</button>}
-                        <div className="text-xs text-white/60 ml-auto">{files.length} selected</div>
-                      </div>
-                      <div className="flex gap-2 overflow-x-auto pt-2">
-                        {filePreviews.map((u,i)=>(
-                          <div key={i} className="w-16 h-16 bg-white/10 rounded-md flex-shrink-0">
-                            <img src={u} className="w-full h-full object-cover rounded-md" />
+                    <div>
+                      <label className="text-sm text-white/70 block mb-1">Finish Effect</label>
+                      <select
+                        className={selectClass}
+                        value={form.finish_effect}
+                        onChange={e => update("finish_effect", e.target.value)}
+                      >
+                        {Object.keys(finishThumbs).map(f => (
+                          <option key={f} value={f}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="text-sm text-white/70 block mb-1">Dimensions *</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <select
+                      className={selectClass}
+                      value={form.unit}
+                      onChange={e => update("unit", e.target.value)}
+                    >
+                      <option value="inches">Inches</option>
+                      <option value="mm">Millimeters</option>
+                      <option value="cm">Centimeters</option>
+                    </select>
+                    <div>
+                      <input
+                        className={`${inputClass} ${errors.width ? "border-rose-500" : ""}`}
+                        placeholder="Width *"
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={form.width}
+                        onChange={e => update("width", e.target.value)}
+                        aria-invalid={!!errors.width}
+                        aria-describedby={errors.width ? "width-error" : undefined}
+                      />
+                      {errors.width && <p id="width-error" className="text-rose-400 text-sm mt-1">{errors.width}</p>}
+                    </div>
+                    <div>
+                      <input
+                        className={`${inputClass} ${errors.height ? "border-rose-500" : ""}`}
+                        placeholder="Height *"
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={form.height}
+                        onChange={e => update("height", e.target.value)}
+                        aria-invalid={!!errors.height}
+                        aria-describedby={errors.height ? "height-error" : undefined}
+                      />
+                      {errors.height && <p id="height-error" className="text-rose-400 text-sm mt-1">{errors.height}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {form.patch_type === "pvc" && (
+                  <div>
+                    <label className="text-sm text-white/70 block mb-1">Dimension Type</label>
+                    <select
+                      className={selectClass}
+                      value={form.dimension}
+                      onChange={e => update("dimension", e.target.value)}
+                    >
+                      {dimensionOptions.map(d => (
+                        <option key={d} value={d}>{d} Mold</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Artwork Upload */}
+                <div>
+                  <label className="text-sm text-white/70 block mb-1">Upload artwork (optional, max 5 files)</label>
+                  <div className="border-2 border-dashed border-white/20 rounded-2xl p-4 text-center">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf"
+                      onChange={handleFiles}
+                      className="hidden"
+                      id="patch-files"
+                    />
+                    <label
+                      htmlFor="patch-files"
+                      className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white hover:bg-cyan-600 transition"
+                    >
+                      <FiUploadCloud size={20} />
+                      Choose files
+                    </label>
+                    <p className="text-xs text-white/60 mt-2">PNG, JPG, PDF • Max 5 files</p>
+
+                    {files.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {files.map((file, i) => (
+                          <div key={i} className="relative group">
+                            <div className="bg-white/5 rounded-lg p-2 text-center text-xs truncate">
+                              {file.name}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(i)}
+                              className="absolute -top-2 -right-2 bg-rose-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                            >
+                              <FiX size={14} />
+                            </button>
                           </div>
                         ))}
                       </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 2: Shape, Backing & Options */}
+            {step === 2 && (
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-5"
+              >
+                {/* Shape Selection */}
+                <div>
+                  <label className="text-sm text-white/70 block mb-2">Shape</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {Object.entries(shapeThumbs).map(([key, thumb]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => update("shape", key)}
+                        className={`p-2 rounded-xl border transition text-center ${
+                          form.shape === key
+                            ? "border-cyan-400 bg-cyan-900/30 shadow-[0_0_10px_cyan]"
+                            : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        <img src={thumb} alt={key} className="w-full h-16 object-contain mx-auto" />
+                        <div className="text-xs mt-1 capitalize text-white/80">{key.replace("-", " ")}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Backing Selection */}
+                <div>
+                  <label className="text-sm text-white/70 block mb-2">Backing</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {Object.entries(backingThumbs).map(([key, thumb]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => update("backing", key)}
+                        className={`p-2 rounded-xl border transition text-center ${
+                          form.backing === key
+                            ? "border-cyan-400 bg-cyan-900/30 shadow-[0_0_10px_cyan]"
+                            : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        <img src={thumb} alt={key} className="w-full h-16 object-contain mx-auto" />
+                        <div className="text-xs mt-1 capitalize text-white/80">{key.replace("-", " ")}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div>
+                  <label className="text-sm text-white/70 block mb-1">Quantity *</label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <select
+                      className={`${selectClass} ${errors.quantity ? "border-rose-500" : ""}`}
+                      value={form.quantity}
+                      onChange={e => update("quantity", e.target.value)}
+                    >
+                      <option value="">Select quantity</option>
+                      {quantityChoices.map(q => (
+                        <option key={q} value={q}>{q}</option>
+                      ))}
+                    </select>
+                    <input
+                      className={`${inputClass} ${errors.custom_qty ? "border-rose-500" : ""}`}
+                      type="number"
+                      placeholder="Custom quantity"
+                      min={1}
+                      value={form.custom_qty}
+                      onChange={e => update("custom_qty", e.target.value)}
+                    />
+                  </div>
+                  {(errors.quantity || errors.custom_qty) && (
+                    <p className="text-rose-400 text-sm mt-1">
+                      {errors.quantity || errors.custom_qty}
+                    </p>
+                  )}
+                </div>
+
+                {/* Border & Thread */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-sm text-white/70 block mb-1">Border</label>
+                    <div className="flex flex-wrap gap-2">
+                      {borderOptions.map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => update("border", b)}
+                          className={`px-4 py-2 rounded-full text-sm ${
+                            form.border === b ? "bg-cyan-600 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"
+                          } transition`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-white/70 block mb-1">Thread</label>
+                    <div className="flex flex-wrap gap-2">
+                      {threadOptions.map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => update("thread", t)}
+                          className={`px-4 py-2 rounded-full text-sm ${
+                            form.thread === t ? "bg-cyan-600 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"
+                          } transition`}
+                        >
+                          {t}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 2 - Shape & Options */}
-            {step===2 && (
-              <motion.div key="step-2" initial={{opacity:0,x:10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-10}} className="space-y-4">
-                {/* Shape */}
-                <label className="text-sm text-white/70 mb-1 block">Shape</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {Object.keys(shapeThumbs).map(k => (
-                    <button key={k} type="button" onClick={()=>update("shape",k)} className={`p-2 rounded-2xl border flex flex-col items-center gap-1 ${form.shape===k ? "border-cyan-400 bg-white/4 shadow-[0_0_8px_cyan]" : "border-white/10"} transition`}>
-                      <img src={shapeThumbs[k]} alt={k} className="w-16 h-12 object-contain" />
-                      <div className="text-xs text-white/60 capitalize">{k.replace("-"," ")}</div>
-                    </button>
-                  ))}
-                </div>
+            {/* STEP 3: Preview & Submit */}
+            {step === 3 && (
+              <motion.div
+                key="step-3"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-5"
+              >
+                <h4 className="text-lg font-semibold text-cyan-300">Review Your Patch Request</h4>
 
-                {/* Backing */}
-                <label className="text-sm text-white/70 mb-1 block">Backing</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {Object.keys(backingThumbs).map(k => (
-                    <button key={k} type="button" onClick={()=>update("backing",k)} className={`p-2 rounded-2xl border flex flex-col items-center gap-1 ${form.backing===k ? "border-cyan-400 bg-white/4 shadow-[0_0_8px_cyan]" : "border-white/10"} transition`}>
-                      <img src={backingThumbs[k]} alt={k} className="w-16 h-12 object-contain" />
-                      <div className="text-xs text-white/60 capitalize">{k.replace("-"," ")}</div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Quantity */}
-                <label className="text-sm text-white/70">Quantity</label>
-                <div className="flex gap-2 items-center">
-                  <select className={selectClass} value={form.quantity} onChange={e=>update("quantity", e.target.value)}>
-                    <option value="">Select quantity</option>
-                    {quantityChoices.map(q => <option key={q} value={q}>{q}</option>)}
-                  </select>
-                  <input className={`${inputClass} flex-1`} type="number" placeholder="Custom quantity" min={1} value={form.custom_qty} onChange={e=>update("custom_qty", e.target.value)} />
-                </div>
-                {errors.quantity && <div className="text-rose-400 text-sm mt-1">{errors.quantity}</div>}
-
-                {/* Border */}
-                <label className="text-sm text-white/70">Border</label>
-                <div className="flex gap-2 flex-wrap">
-                  {borderOptions.map(b => (
-                    <button key={b} type="button" onClick={()=>update("border",b)} className={`px-3 py-1 rounded-2xl border ${form.border===b?"border-cyan-400 bg-white/4 shadow-[0_0_8px_cyan]":"border-white/20"}`}>{b}</button>
-                  ))}
-                </div>
-
-                {/* Thread */}
-                <label className="text-sm text-white/70">Thread</label>
-                <div className="flex gap-2 flex-wrap">
-                  {threadOptions.map(t => (
-                    <button key={t} type="button" onClick={()=>update("thread",t)} className={`px-3 py-1 rounded-2xl border ${form.thread===t?"border-cyan-400 bg-white/4 shadow-[0_0_8px_cyan]":"border-white/20"}`}>{t}</button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* STEP 3 - Preview */}
-            {step===3 && (
-              <motion.div key="step-3" initial={{opacity:0,x:10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-10}} className="space-y-4">
-                <h4 className="text-white font-semibold">Review Your Patch</h4>
-                <div className="p-4 bg-white/5 rounded-2xl flex flex-col gap-3">
-                  <div><strong>Name:</strong> {form.name}</div>
-                  <div><strong>Email:</strong> {form.email}</div>
-                  <div><strong>Phone:</strong> {form.phone || "N/A"}</div>
+                <div className="p-5 bg-gradient-to-br from-blue-950/50 to-indigo-950/50 rounded-2xl border border-white/10 space-y-3 text-sm">
+                  <div><strong>Name:</strong> {form.name || "—"}</div>
+                  <div><strong>Email:</strong> {form.email || "—"}</div>
+                  <div><strong>Phone:</strong> {form.phone || "—"}</div>
                   <div><strong>Patch Type:</strong> {form.patch_type}</div>
-                  {form.patch_type === "embroidered" && <div><strong>Embroidery Coverage:</strong> {form.embroidery_coverage}</div>}
-                  {form.patch_type === "leather" && <>
-                    <div><strong>Dimension:</strong> {form.dimension}</div>
-                    <div><strong>Leather Type:</strong> {form.leather_type}</div>
-                    <div><strong>Finish Effect:</strong> {form.finish_effect}</div>
-                  </>}
-                  <div><strong>Dimensions:</strong> {form.width} x {form.height} {form.unit}</div>
-                  <div><strong>Shape:</strong> {form.shape}</div>
-                  <div><strong>Backing:</strong> {form.backing}</div>
+                  {form.patch_type === "embroidered" && <div><strong>Coverage:</strong> {form.embroidery_coverage}</div>}
+                  {form.patch_type === "leather" && (
+                    <>
+                      <div><strong>Leather Type:</strong> {form.leather_type}</div>
+                      <div><strong>Finish:</strong> {form.finish_effect}</div>
+                    </>
+                  )}
+                  <div><strong>Dimensions:</strong> {form.width} × {form.height} {form.unit}</div>
+                  <div><strong>Shape:</strong> {form.shape.replace("-", " ")}</div>
+                  <div><strong>Backing:</strong> {form.backing.replace("-", " ")}</div>
                   <div><strong>Quantity:</strong> {form.custom_qty || form.quantity}</div>
                   <div><strong>Border:</strong> {form.border}</div>
                   <div><strong>Thread:</strong> {form.thread}</div>
-                  <div><strong>Artworks:</strong></div>
-                  <div className="flex gap-2 flex-wrap">
-                    {filePreviews.map((u,i)=>(
-                      <div key={i} className="w-20 h-20 bg-white/4 rounded-2xl overflow-hidden flex items-center justify-center">
-                        <img src={u} alt={`art-${i}`} className="w-full h-full object-contain" />
-                      </div>
-                    ))}
-                    {filePreviews.length===0 && <div className="text-white/60">No files uploaded</div>}
-                  </div>
                   {form.message && <div><strong>Comments:</strong> {form.message}</div>}
+
+                  <div className="pt-3 border-t border-white/10">
+                    <strong>Artwork ({files.length}):</strong>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
+                      {previews.map((url, i) => (
+                        <img key={i} src={url} alt={`preview-${i}`} className="w-full h-20 object-cover rounded-lg" />
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
+                {result && result.error && (
+                  <div className="p-4 bg-rose-900/30 border border-rose-500 rounded-xl text-rose-300">
+                    {result.error}
+                  </div>
+                )}
               </motion.div>
             )}
-
           </AnimatePresence>
 
-          {/* Navigation */}
-          <div className="hidden sm:flex justify-between mt-4 sticky bottom-0 bg-black/6 p-3 rounded-b-2xl">
-            <button type="button" className={buttonClass} onClick={prev} disabled={step===0}>Back</button>
-            {step<STEP_TITLES.length-1 ? (
-              <button type="button" className={buttonClass} onClick={next}>Next</button>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8 sticky bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-6 pb-4 -mx-4 px-4">
+            <button
+              type="button"
+              onClick={prev}
+              disabled={step === 0}
+              className={`${buttonClass} disabled:opacity-40`}
+            >
+              Back
+            </button>
+
+            {step < STEP_TITLES.length - 1 ? (
+              <button
+                type="button"
+                onClick={next}
+                className={buttonClass}
+              >
+                Next
+              </button>
             ) : (
-              <button type="button" className={buttonClass} onClick={submit} disabled={submitting}>{submitting?"Submitting...":"Submit"}</button>
+              <button
+                type="button"
+                onClick={submit}
+                disabled={submitting || Object.keys(errors).length > 0}
+                className={`${buttonClass} flex items-center gap-2 disabled:opacity-50`}
+              >
+                {submitting ? (
+                  <>
+                    <FiLoader className="animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Request"
+                )}
+              </button>
             )}
           </div>
-
-          {result && result.ok && <div className="mt-3 text-green-400 font-semibold">✅ Your patch request was submitted!</div>}
-          {result && result.error && <div className="mt-3 text-rose-400 font-semibold">❌ {result.error}</div>}
         </form>
+
+        {result?.ok && (
+          <div className="text-center py-8 text-green-400 font-semibold text-xl">
+            <FiCheckCircle className="inline-block mr-2 text-3xl" />
+            Thank you! Your patch request has been submitted successfully.
+            <p className="text-base mt-2 text-white/70">
+              We will get back to you soon.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Mobile sticky nav */}
-      <div className="sm:hidden fixed bottom-3 left-3 right-3 z-[999]">
-        <div className="bg-black/60 backdrop-blur-md p-3 rounded-2xl flex items-center justify-between gap-3">
-          {step>0 ? (
-            <button onClick={prev} className="px-4 py-2 rounded-full bg-white/6 text-white">Back</button>
-          ) : <div className="w-14" />}
-          {step<STEP_TITLES.length-1 ? (
-            <button onClick={next} className="px-4 py-2 rounded-full bg-cyan-600 text-white shadow-[0_0_10px_cyan]">Next</button>
+      {/* Mobile Sticky Bottom Bar */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/95 to-transparent backdrop-blur-lg border-t border-white/10 p-4">
+        <div className="flex justify-between items-center max-w-3xl mx-auto">
+          {step > 0 && (
+            <button onClick={prev} className="px-6 py-3 bg-white/10 rounded-full text-white">
+              Back
+            </button>
+          )}
+          {step < STEP_TITLES.length - 1 ? (
+            <button onClick={next} className="px-8 py-3 bg-cyan-600 rounded-full text-white shadow-lg shadow-cyan-500/30 flex-1 ml-auto">
+              Next
+            </button>
           ) : (
-            <button onClick={submit} disabled={submitting} className="px-4 py-2 rounded-full bg-cyan-600 text-white shadow-[0_0_10px_cyan]">
-              {submitting ? "Submitting..." : "Submit"}
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="px-8 py-3 bg-cyan-600 rounded-full text-white shadow-lg shadow-cyan-500/30 flex-1 ml-auto flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {submitting ? <FiLoader className="animate-spin" /> : null}
+              Submit
             </button>
           )}
         </div>

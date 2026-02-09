@@ -1,49 +1,50 @@
+// src/app/services/page.jsx
 import ServicesPageClient from "./ServicesPageClient";
 import BreadcrumbBar from "@/components/BreadcrumbBar";
 
 export const metadata = {
   metadataBase: new URL("https://northernpatches.com"),
-  title: "Our Services | Northern Patches USA",
+  title: "Custom Patch Services USA | Embroidered, PVC, Chenille & Leather | No Minimum",
   description:
-    "Explore ultra-premium custom patch services by Northern Patches USA including embroidered, PVC, chenille, and leather patches.",
+    "Explore premium custom patch services in the USA – embroidered, PVC, chenille, woven & leather patches. No minimum order quantity, fast production, high-quality USA-made patches. Get your free quote today!",
   alternates: { canonical: "https://northernpatches.com/services" },
   openGraph: {
-    title: "Our Services | Northern Patches USA",
+    title: "Custom Patch Services USA | Embroidered, PVC, Chenille & Leather | No Minimum",
     description:
-      "Explore premium embroidered, PVC, chenille & leather patch services across the USA.",
+      "Explore premium custom patch services in the USA – embroidered, PVC, chenille, woven & leather patches. No minimum order quantity, fast production, high-quality USA-made patches. Get your free quote today!",
     url: "https://northernpatches.com/services",
-    images: ["https://northernpatches.com/og-banner.jpg"],
+    images: ["/og-services.jpg"],
+    type: "website",
+    locale: "en_US",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Custom Patch Services USA | Embroidered, PVC, Chenille & Leather | No Minimum",
+    description:
+      "Explore premium custom patch services in the USA – embroidered, PVC, chenille, woven & leather patches. No minimum order quantity, fast production, high-quality USA-made patches. Get your free quote today!",
+    images: ["/og-services.jpg"],
+  },
+  keywords:
+    "custom patch services USA, embroidered patches USA, PVC patches no minimum, chenille patches USA, custom leather patches USA, woven patches no minimum, fast shipping custom patches USA, USA made patches",
+  robots: "index, follow",
 };
 
 export default function ServicesPage() {
   return (
     <main className="relative z-10 min-h-screen bg-gradient-to-b from-brand-900 via-brand-800 to-brand-700 text-brand-50 overflow-x-hidden">
-      {/* Breadcrumb */}
       <BreadcrumbBar current="Services" />
-
-      {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-20 text-center">
-        {/* Soft brand glows (theme safe) */}
-        <div className="absolute top-10 left-10 w-64 h-64 bg-brand-500/20 blur-[140px] -z-10" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-brand-400/15 blur-[160px] -z-10" />
-
-        <p className="text-sm uppercase tracking-widest text-brand-300 font-semibold">
-          Our Premium Services
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-16 md:pt-28 md:pb-20 text-center">
+        <p className="text-xs sm:text-sm uppercase tracking-widest text-brand-300 font-semibold">
+          Premium Custom Patch Services – USA
         </p>
-
-        <h1 className="mt-4 text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-brand-100 via-brand-300 to-brand-400 bg-clip-text text-transparent">
-          Custom Patch Services
+        <h1 className="mt-3 sm:mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 leading-tight">
+          Custom Patch Services USA – Embroidered, PVC, Chenille & Leather | No Minimum Order
         </h1>
-
-        <p className="mt-6 max-w-2xl mx-auto text-brand-200 text-base md:text-lg leading-relaxed">
-          Expertly crafted custom patches designed for brands, teams, and
-          businesses across the United States.
+        <p className="mt-5 sm:mt-6 max-w-3xl mx-auto text-base sm:text-lg md:text-xl text-brand-200 leading-relaxed">
+          Order premium custom patches in the USA with **no minimum quantity**. Fast production, USA-made quality for embroidered, PVC, chenille, woven & leather patches. Free quote in minutes!
         </p>
       </section>
-
-      {/* Services Grid */}
-      <section className="relative z-10 pb-32">
+      <section className="relative z-10 pb-20 md:pb-32">
         <ServicesPageClient />
       </section>
     </main>
