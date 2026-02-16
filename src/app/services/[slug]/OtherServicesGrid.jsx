@@ -1,3 +1,4 @@
+// src/components/home/OtherServicesGrid.jsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -9,9 +10,22 @@ import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 
+// Helper: Strip HTML tags safely
+const stripHtml = (html = "") => {
+  if (typeof window === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+};
+
+// Helper: Get image URL with fallback
+const getImage = (service) => {
+  return service.thumbnail || service.image || service.image_url || "/images/placeholder-service.jpg";
+};
+
 export default function OtherServicesGrid({ services = [], currentSlug }) {
   const [showAll, setShowAll] = useState(false);
 
+  // Filter out current service
   const filteredServices = useMemo(
     () => services.filter((s) => s.slug !== currentSlug),
     [services, currentSlug]
@@ -21,9 +35,11 @@ export default function OtherServicesGrid({ services = [], currentSlug }) {
 
   return (
     <section className="relative py-12 sm:py-16">
+      {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0018FF]/10 via-transparent to-[#0600AB]/10 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 container mx-auto px-4 sm:px-6 text-center">
+        {/* Heading */}
         <motion.h2
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -44,29 +60,35 @@ export default function OtherServicesGrid({ services = [], currentSlug }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="relative rounded-3xl overflow-hidden bg-white/10 border border-white/10 backdrop-blur-md hover:border-[#0033FF]/50 shadow-md hover:shadow-blue-600/30 transition-all duration-500 group focus-within:ring-2 focus-within:ring-cyan-400 focus-within:ring-offset-2"
               >
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-[#0033FF]/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
-                <Link href={`/services/${service.slug}`} className="block">
+                <Link
+                  href={`/services/${service.slug}`}
+                  className="group relative rounded-3xl overflow-hidden bg-white/10 border border-white/10 backdrop-blur-md hover:border-[#0033FF]/50 shadow-md hover:shadow-blue-600/30 transition-all duration-500 focus-within:ring-2 focus-within:ring-cyan-400 focus-within:ring-offset-2 block"
+                >
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-[#0033FF]/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none" />
+
+                  {/* Image */}
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-3xl">
                     <Image
-                      src={service.thumbnail || "/placeholder-service.jpg"}
-                      alt={`${service.title} – Custom Patches USA | No Minimum by Northern Patches`}
+                      src={getImage(service)}
+                      alt={`${service.title} – Custom Patch USA | No Minimum by Northern Patches`}
                       fill
                       className="object-contain group-hover:scale-110 transition-transform duration-700"
                       priority={index < 4}
-                      decoding="async"
                       quality={75}
                       sizes="(max-width: 1024px) 50vw, 33vw"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition" />
                   </div>
+
+                  {/* Text */}
                   <div className="p-4 md:p-5 text-left">
                     <h3 className="text-white font-semibold text-base md:text-lg mb-2 group-hover:text-[#00A6FF] transition">
                       {service.title} USA – No Minimum
                     </h3>
                     <p className="text-white/70 text-sm line-clamp-2">
-                      {service.description || "Premium custom patch service in USA with no minimum order & fast shipping."}
+                      {stripHtml(service.description) ||
+                        "Premium custom patch service in USA with no minimum order & fast shipping."}
                     </p>
                   </div>
                 </Link>
@@ -97,17 +119,14 @@ export default function OtherServicesGrid({ services = [], currentSlug }) {
             >
               {filteredServices.map((service, i) => (
                 <SwiperSlide key={service.slug}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05 }}
-                    className="group relative bg-white/5 hover:bg-white/10 p-4 rounded-xl shadow-md border border-white/10 hover:border-blue-600 transition-all duration-300 focus-within:ring-2 focus-within:ring-cyan-400 focus-within:ring-offset-2"
+                  <Link
+                    href={`/services/${service.slug}`}
+                    className="group relative bg-white/5 hover:bg-white/10 p-4 rounded-xl shadow-md border border-white/10 hover:border-blue-600 transition-all duration-300 focus-within:ring-2 focus-within:ring-cyan-400 focus-within:ring-offset-2 block"
                   >
                     <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg mb-3">
                       <Image
-                        src={service.thumbnail || "/placeholder-service.jpg"}
-                        alt={`${service.title} – Custom Patches USA | No Minimum by Northern Patches`}
+                        src={getImage(service)}
+                        alt={`${service.title} – Custom Patch USA | No Minimum by Northern Patches`}
                         fill
                         className="object-contain group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
@@ -116,28 +135,23 @@ export default function OtherServicesGrid({ services = [], currentSlug }) {
                         sizes="100vw"
                       />
                     </div>
-                    <h3 className="text-lg font-semibold mb-1 text-white">
-                      {service.title} USA
-                    </h3>
+                    <h3 className="text-lg font-semibold mb-1 text-white">{service.title} USA</h3>
                     <p className="text-sm text-gray-400 line-clamp-2 mb-2">
-                      {service.description || "Premium custom patch service in USA with no minimum."}
+                      {stripHtml(service.description) ||
+                        "Premium custom patch service in USA with no minimum."}
                     </p>
-                    <Link
-                      href={`/services/${service.slug}`}
-                      className="text-blue-400 hover:text-blue-300 text-sm font-medium focus-visible:underline"
-                    >
-                      View Details →
-                    </Link>
-                  </motion.div>
+                  </Link>
                 </SwiperSlide>
               ))}
-              {/* Custom arrows for mobile */}
-              <div className="swiper-button-prev-mobile absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 backdrop-blur-md text-white p-3 rounded-full opacity-80 hover:opacity-100 transition" />
-              <div className="swiper-button-next-mobile absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 backdrop-blur-md text-white p-3 rounded-full opacity-80 hover:opacity-100 transition" />
+
+              {/* Custom mobile arrows */}
+              <div className="swiper-button-prev-mobile absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/70 backdrop-blur-md text-white p-3 rounded-full opacity-90 hover:opacity-100 transition shadow-lg" />
+              <div className="swiper-button-next-mobile absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/70 backdrop-blur-md text-white p-3 rounded-full opacity-90 hover:opacity-100 transition shadow-lg" />
             </Swiper>
           )}
         </div>
 
+        {/* Show All / Less Button */}
         {filteredServices.length > 6 && (
           <motion.button
             onClick={() => setShowAll(!showAll)}

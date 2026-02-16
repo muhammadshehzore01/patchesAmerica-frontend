@@ -95,11 +95,11 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-3 justify-center md:justify-start">
                 <FiPhone className="text-[var(--color-accent)] w-5 h-5" />
-                <span>+1 (555) 123-4567</span>
+                <span>+1-828-818-2142</span>
               </div>
               <div className="flex items-center gap-3 justify-center md:justify-start">
                 <FiMail className="text-[var(--color-accent)] w-5 h-5" />
-                <span>hello@northernpatches.us</span>
+                <span>hello@northernpatches.com</span>
               </div>
             </div>
 

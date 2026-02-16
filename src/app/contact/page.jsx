@@ -133,7 +133,7 @@ export default function ContactPage() {
               url: "https://northrenpatches.com",
               contactPoint: {
                 "@type": "ContactPoint",
-                telephone: "000-0000-000",
+                telephone: "+1-828-818-2142",
                 contactType: "customer service",
               },
             }),
@@ -200,7 +200,7 @@ export default function ContactPage() {
             <h2 className="text-2xl font-bold mb-6">Contact Details</h2>
             <div className="space-y-4 text-brand-200">
               <p className="flex gap-3 items-center"><FiMapPin /> USA</p>
-              <p className="flex gap-3 items-center"><FiPhone /> +61 123 456 789</p>
+              <p className="flex gap-3 items-center"><FiPhone /> +1-828-818-2142</p>
               <p className="flex gap-3 items-center"><FiMail /> contact@northrenpatches.com</p>
             </div>
           </div>

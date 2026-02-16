@@ -6,6 +6,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+// Optional: tiny helper to strip HTML tags if your backend sometimes sends HTML
+const stripHtml = (html) => {
+  if (typeof window === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+};
+
 export default function ServicesShowcase({
   services = [],
   initialCount = 6,
@@ -45,7 +52,13 @@ export default function ServicesShowcase({
         </h2>
 
         <p className="text-[var(--color-text-secondary)] text-xl max-w-3xl mx-auto">
-          Discover our range of high quality custom embroidered patches USA custom PVC patches no minimum custom chenille patches for jackets custom woven patches for hats custom leather patches for bags crafted with expert precision and premium materials for durability and style
+          Discover our range of high quality{" "}
+          <strong>custom embroidered patches USA</strong>,{" "}
+          <strong>custom PVC patches no minimum</strong>,{" "}
+          <strong>custom chenille patches for jackets</strong>,{" "}
+          <strong>custom woven patches for hats</strong>,{" "}
+          <strong>custom leather patches for bags</strong> crafted with expert
+          precision and premium materials for durability and style.
         </p>
       </motion.div>
 
@@ -68,7 +81,7 @@ export default function ServicesShowcase({
               <div className="relative aspect-[14/10] w-full overflow-hidden">
                 <Image
                   src={s.image_url}
-                  alt={`${s.title} – custom embroidered patches USA example, no minimum order`}
+                  alt={`${s.title} – custom ${s.title.toLowerCase()} USA example, no minimum order`}
                   fill
                   quality={72}
                   sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
@@ -86,8 +99,9 @@ export default function ServicesShowcase({
                   {s.title}
                 </h3>
 
+                {/* === FIXED: show clean text without HTML tags === */}
                 <p className="text-[var(--color-text-secondary)] mb-6 line-clamp-4">
-                  {s.description}
+                  {stripHtml(s.description)}
                 </p>
 
                 <span className="inline-block text-[var(--color-accent)] font-semibold">
