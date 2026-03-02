@@ -1,9 +1,9 @@
-// src/app/HomePageClient.jsx
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useHomeData } from "@/hooks/useApiHooks";
+
 import HeroSlider from "@/components/HeroSlider";
 import ServicesShowcase from "@/components/home/ServicesShowcase";
 import StepsSection from "@/components/home/StepsSection";
@@ -12,13 +12,8 @@ import CTAStrip from "@/components/home/CTAStrip";
 import BlogList from "@/components/BlogList";
 import FuturisticGallery from "./services/ServicesGalleryGrid";
 
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center text-[var(--color-text-primary)] text-xl">
-      Loading premium USA-made custom patches experience...
-    </div>
-  );
-}
+
+/* ================= Skeletons ================= */
 
 function ServicesSkeleton() {
   return (
@@ -53,97 +48,256 @@ function GallerySkeleton() {
   );
 }
 
+
+/* ================= Component ================= */
+
 export default function HomePageClient() {
-  const { sliders, services = [], blogs = [], isError, mutate } = useHomeData();
+
+  const {
+    sliders = [],
+    services = [],
+    blogs = [],
+    isLoading,
+    isError,
+    mutate,
+  } = useHomeData();
+
+
   const [showAllServices, setShowAllServices] = useState(false);
   const [showAllBlogs, setShowAllBlogs] = useState(false);
   const [showAllGallery, setShowAllGallery] = useState(false);
+  const [fetchTimedOut, setFetchTimedOut] = useState(false);
+
 
   const initialServices = 6;
   const initialBlogs = 6;
   const initialGallery = 12;
 
-  const publishedBlogs = blogs.filter((blog) => blog.published);
+  const publishedBlogs = useMemo(
+    () => blogs?.filter(b => b?.published) ?? [],
+    [blogs]
+  );
+
+  useEffect(() => {
+
+    if (!isLoading) return;
+
+    const timer = setTimeout(() => {
+
+      if (
+        sliders.length === 0 &&
+        services.length === 0 &&
+        publishedBlogs.length === 0
+      ) {
+        console.warn("Timeout triggered");
+        setFetchTimedOut(true);
+      }
+
+    }, 15000);
+
+    return () => clearTimeout(timer);
+
+  }, [isLoading, sliders.length, services.length, publishedBlogs.length]);
+
+
+  useEffect(() => {
+
+    if (
+      sliders.length > 0 ||
+      services.length > 0 ||
+      publishedBlogs.length > 0
+    ) {
+      setFetchTimedOut(false);
+    }
+
+  }, [sliders.length, services.length, publishedBlogs.length]);
+
+
+  /* ✅ retry */
+  const handleRetry = async () => {
+    setFetchTimedOut(false);
+    await mutate(undefined, { revalidate: true });
+  };
+
+
+  /* ================= ERROR ================= */
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center text-red-400 text-xl">
-        Something went wrong. Please refresh the page.
-      </div>
+      <ErrorScreen
+        message="Failed to load homepage content."
+        onRetry={handleRetry}
+      />
     );
   }
 
+
+  /* ================= TIMEOUT ================= */
+
+  if (fetchTimedOut) {
+    return (
+      <ErrorScreen
+        message="Server took too long to respond."
+        onRetry={handleRetry}
+      />
+    );
+  }
+
+
+  /* ================= MAIN UI ================= */
+
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <main className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-x-hidden">
-        <HeroSlider slides={sliders} />
 
-        <Suspense fallback={<ServicesSkeleton />}>
-          <ServicesShowcase services={services} />
-          {services.length > initialServices && (
-            <div className="text-center py-12 min-h-[80px] flex items-center justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowAllServices(!showAllServices)}
-                className="btn-primary px-10 py-4 text-lg font-medium rounded-full shadow-lg transition-all"
-              >
-                {showAllServices ? "View Less Services" : "View More Services"}
-              </motion.button>
-            </div>
-          )}
-        </Suspense>
+    <main className="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-x-hidden">
 
-        <StepsSection />
-        <WhyChooseUsSection />
 
-        <div className="bg-gradient-to-b from-[hsl(42,8%,97%)] via-[hsl(42,8%,95%)] to-[hsl(42,8%,93%)] text-[hsl(210,12%,10%)]">
-          <Suspense fallback={<BlogsSkeleton />}>
-            {publishedBlogs.length > 0 ? (
-              <>
-                <BlogList posts={publishedBlogs} />
-                {publishedBlogs.length > initialBlogs && (
-                  <div className="text-center py-12 min-h-[80px] flex items-center justify-center">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setShowAllBlogs(!showAllBlogs)}
-                      className="btn-primary px-10 py-4 text-lg font-medium rounded-full shadow-lg transition-all bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)]"
-                    >
-                      {showAllBlogs ? "View Less Blogs" : "View More Blogs"}
-                    </motion.button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-32 text-blue-100/60">
-                <p className="text-2xl font-semibold">No published blogs yet.</p>
-                <p className="mt-4 text-base">
-                  Check back soon for updates on custom patches USA, embroidered patches no minimum, and more.
-                </p>
-              </div>
+      {/* HERO */}
+
+      {isLoading && sliders.length === 0
+        ? <ServicesSkeleton />
+        : <HeroSlider slides={sliders} />
+      }
+
+
+      {/* SERVICES */}
+
+      {isLoading && services.length === 0
+        ? <ServicesSkeleton />
+        : (
+          <>
+            <ServicesShowcase
+              services={
+                showAllServices
+                  ? services
+                  : services.slice(0, initialServices)
+              }
+            />
+
+            {services.length > initialServices && (
+              <ButtonMore
+                showAll={showAllServices}
+                setShowAll={setShowAllServices}
+                more="View More Services"
+                less="View Less Services"
+              />
             )}
-          </Suspense>
-        </div>
+          </>
+        )
+      }
 
-        <Suspense fallback={<GallerySkeleton />}>
-          <FuturisticGallery services={services} />
-          {services.length > initialGallery && (
-            <div className="text-center py-12 min-h-[80px] flex items-center justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowAllGallery(!showAllGallery)}
-                className="btn-primary px-10 py-4 text-lg font-medium rounded-full shadow-lg transition-all"
-              >
-                {showAllGallery ? "View Less Gallery" : "View More Gallery"}
-              </motion.button>
-            </div>
-          )}
-        </Suspense>
 
-        <CTAStrip />
-      </main>
-    </Suspense>
+      <StepsSection />
+
+      <WhyChooseUsSection />
+
+
+      {/* BLOGS */}
+
+      <div className="bg-gradient-to-b from-[hsl(42,8%,97%)] via-[hsl(42,8%,95%)] to-[hsl(42,8%,93%)] text-[hsl(210,12%,10%)]">
+
+        {isLoading && publishedBlogs.length === 0
+          ? <BlogsSkeleton />
+          : (
+            <>
+              <BlogList
+                posts={
+                  showAllBlogs
+                    ? publishedBlogs
+                    : publishedBlogs.slice(0, initialBlogs)
+                }
+              />
+
+              {publishedBlogs.length > initialBlogs && (
+                <ButtonMore
+                  showAll={showAllBlogs}
+                  setShowAll={setShowAllBlogs}
+                  more="View More Blogs"
+                  less="View Less Blogs"
+                />
+              )}
+            </>
+          )
+        }
+
+      </div>
+
+
+      {/* GALLERY */}
+
+      {isLoading && services.length === 0
+        ? <GallerySkeleton />
+        : (
+          <>
+            <FuturisticGallery
+              services={
+                showAllGallery
+                  ? services
+                  : services.slice(0, initialGallery)
+              }
+            />
+
+            {services.length > initialGallery && (
+              <ButtonMore
+                showAll={showAllGallery}
+                setShowAll={setShowAllGallery}
+                more="View More Gallery"
+                less="View Less Gallery"
+              />
+            )}
+          </>
+        )
+      }
+
+
+      <CTAStrip />
+
+    </main>
+
+  );
+}
+
+
+/* ================= reusable components ================= */
+
+function ButtonMore({ showAll, setShowAll, more, less }) {
+
+  return (
+    <div className="text-center py-12">
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={() => setShowAll(!showAll)}
+        className="btn-primary px-10 py-4 rounded-full"
+      >
+        {showAll ? less : more}
+      </motion.button>
+
+    </div>
+  );
+}
+
+
+function ErrorScreen({ message, onRetry }) {
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white px-6 text-center">
+
+      <h1 className="text-5xl font-bold text-red-500 mb-6">
+        Oops!
+      </h1>
+
+      <p className="text-xl mb-8">
+        {message}
+      </p>
+
+      <button
+        onClick={onRetry}
+        className="px-10 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full font-bold"
+      >
+        Retry
+      </button>
+
+    </div>
   );
 }

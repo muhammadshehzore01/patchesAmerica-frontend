@@ -1,7 +1,9 @@
 /* src/app/globals.css */
 @import "tailwindcss";
 
-/* Critical above-fold styles – prevents FOUT & CLS */
+/* ==============================
+   Root colors & critical styles
+   ============================== */
 :root {
   --color-bg-primary: #0a1326;
   --color-bg-secondary: #111827;
@@ -13,15 +15,9 @@
   --color-glass-border: rgba(255, 255, 255, 0.12);
 }
 
-/* Font loading – swap prevents invisible text */
-@font-face {
-  font-family: 'Inter';
-  src: url('/fonts/inter-v12-latin-regular.woff2') format('woff2');
-  font-weight: 400 700;
-  font-display: swap;
-}
-
-/* Glass utility */
+/* ==============================
+   Glass utility
+   ============================== */
 @utility glass {
   background: var(--color-glass-bg);
   backdrop-filter: blur(16px);
@@ -31,6 +27,9 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
+/* ==============================
+   Button primary utility
+   ============================== */
 @utility btn-primary {
   background-color: var(--color-accent);
   color: white;
@@ -40,12 +39,17 @@
   transition: all 0.3s ease;
 }
 
-/* Prevent layout shift in hero & sections */
-.hero-section, section {
+/* ==============================
+   Prevent layout shift
+   ============================== */
+.hero-section,
+section {
   contain: layout paint;
 }
 
-/* Mobile-first base */
+/* ==============================
+   Base html & body
+   ============================== */
 html {
   scroll-behavior: smooth;
   font-size: 100%;
@@ -53,13 +57,16 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ==============================
+   Reduced motion
+   ============================== */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -67,4 +74,69 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ==============================
+   Global section spacing (compact mode)
+   ============================== */
+section,
+main > section,
+main > div:not(.hero-section) {
+  padding-top: 4rem !important;
+  padding-bottom: 4rem !important;
+}
+
+@media (max-width: 1024px) {
+  section,
+  main > section,
+  main > div:not(.hero-section) {
+    padding-top: 3.5rem !important;
+    padding-bottom: 3.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  section,
+  main > section,
+  main > div:not(.hero-section) {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+  }
+}
+
+/* ==============================
+   Hero section height
+   ============================== */
+.hero-section,
+section:has(> div.relative.z-20) {
+  min-height: 65vh !important;
+  height: auto;
+  padding-top: 5rem !important;
+  padding-bottom: 5rem !important;
+}
+
+@media (max-width: 768px) {
+  .hero-section,
+  section:has(> div.relative.z-20) {
+    min-height: 50vh !important;
+    padding-top: 4rem !important;
+    padding-bottom: 4rem !important;
+  }
+}
+
+/* Optional shorter section heights */
+.min-h-\[500px\],
+.h-\[70vh\],
+.md\:h-\[80vh\] {
+  min-height: 55vh !important;
+}
+
+/* Override ServicesShowcase height */
+section:has(.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3) {
+  padding-top: 5rem !important;
+  padding-bottom: 5rem !important;
+}
+
+section:has(.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3) .mb-20 {
+  margin-bottom: 4rem !important;
 }

@@ -1,3 +1,4 @@
+
 // src/components/HeroSlider.jsx
 "use client";
 

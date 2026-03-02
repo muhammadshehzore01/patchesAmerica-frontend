@@ -1,3 +1,4 @@
+// project/frontend/src/components/AnimatedCard.jsx
 'use client'
 import { motion } from 'framer-motion'
 

@@ -11,9 +11,7 @@ export async function generateMetadata() {
     keywords:
       "custom patches USA, custom embroidered patches USA, custom PVC patches no minimum, custom chenille patches, custom woven patches USA, custom leather patches no minimum, custom patches for jackets USA, custom military patches, custom sports team patches USA, fast shipping patches USA, no minimum custom patches, patches for hats USA, custom patches for bags USA",
     robots: "index, follow",
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: "Northern Patches America – Custom Patches USA | No Minimum",
       description:
@@ -21,12 +19,7 @@ export async function generateMetadata() {
       url: canonicalUrl,
       siteName: "Northern Patches",
       images: [
-        {
-          url: "/og-home.jpg",
-          width: 1200,
-          height: 630,
-          alt: "Custom patches gallery – Northern Patches USA",
-        },
+        { url: "/og-home.jpg", width: 1200, height: 630, alt: "Custom patches gallery – Northern Patches USA" },
       ],
       locale: "en_US",
       type: "website",
@@ -48,10 +41,7 @@ const structuredData = {
       "@type": "Organization",
       name: "Northern Patches America",
       url: "https://northernpatches.com/",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://northernpatches.com/logo.png",
-      },
+      logo: { "@type": "ImageObject", url: "https://northernpatches.com/logo.png" },
       sameAs: [
         "https://www.facebook.com/northernpatches",
         "https://www.instagram.com/northernpatches",
@@ -64,10 +54,7 @@ const structuredData = {
       url: "https://northernpatches.com/",
       potentialAction: {
         "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: "https://northernpatches.com/search?q={search_term_string}",
-        },
+        target: { "@type": "EntryPoint", urlTemplate: "https://northernpatches.com/search?q={search_term_string}" },
         "query-input": "required name=search_term_string",
       },
     },
@@ -75,7 +62,7 @@ const structuredData = {
       "@type": "LocalBusiness",
       name: "Northern Patches America",
       url: "https://northernpatches.com/",
-      telephone: "+1-800-123-4567", // ← Replace with real number when ready
+      telephone: "+1-800-123-4567",
       address: {
         "@type": "PostalAddress",
         streetAddress: "123 Patch Lane",
@@ -88,7 +75,7 @@ const structuredData = {
     {
       "@type": "ItemList",
       name: "Featured Custom Patch Services USA",
-      itemListElement: [], // Can be dynamically populated if needed
+      itemListElement: [],
     },
   ],
 };
@@ -96,21 +83,13 @@ const structuredData = {
 export default function Home() {
   return (
     <>
-      {/* Structured data – Schema.org for SEO & rich results */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-
-      {/* Critical preconnects – improves performance for external resources */}
+      {/* Structured data */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      {/* Preconnects */}
       <link rel="preconnect" href="https://northernpatches.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
 
-      {/* NO manual preloads needed anymore */}
-      {/* - Fonts: handled automatically by next/font/google (Inter & Poppins) */}
-      {/* - Hero image: handled by <Image priority> in HeroSlider.jsx */}
-      {/* This eliminates 404 font error and preload warning */}
-
+      {/* Home Page Client */}
       <HomePageClient />
     </>
   );

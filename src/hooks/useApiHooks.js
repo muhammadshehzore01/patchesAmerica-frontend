@@ -1,4 +1,4 @@
-// project/frontend/src/hooks/useApiHooks.js
+// src/hooks/useApiHooks.js
 "use client";
 import useSWR from "swr";
 import {
@@ -17,27 +17,53 @@ const swrCommonOptions = {
   dedupingInterval: 60000,
   keepPreviousData: true,
   onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
-    if (retryCount >= 3 || error.status === 404) return; // max 3 retries, skip 404
+    console.error("SWR retry error for key:", key, error);
+    if (retryCount >= 3 || error?.status === 404) return;
     setTimeout(() => revalidate({ retryCount }), 5000 * (retryCount + 1));
   },
 };
 
-/* HOME PAGE DATA */
+/* HOME PAGE DATA – FIXED VERSION (forced correct key + logs) */
 export function useHomeData() {
-  const { data, error, mutate } = useSWR("/home/", fetcher, swrCommonOptions);
+  const key = "/api/home/"; // ← yeh sab se zaroori change hai (pehle /home/ tha jo galat tha)
+
+
+
+  const { data, error, mutate, isLoading } = useSWR(
+    key,
+    fetcher,
+    {
+      ...swrCommonOptions,
+      revalidateOnMount: true,      // force fetch on component mount
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,          // no cache deduping – fresh fetch har baar
+    }
+  );
+
+  console.log("🚨 useHomeData SWR STATE:", {
+    hasData: !!data,
+    dataSliders: data?.sliders?.length || 0,
+    dataServices: data?.services?.length || 0,
+    dataBlogs: data?.blogs?.length || 0,
+    isLoading,
+    isError: !!error,
+    errorMessage: error?.message || null,
+  });
+
   const home = data || {};
+
   return {
     sliders: (home.sliders ?? []).map(normalizeSlide).filter(Boolean),
     hero: home.hero ?? {},
     services: (home.services ?? []).map(normalizeService).filter(Boolean),
     blogs: (home.blogs ?? []).map(normalizeBlog).filter(Boolean),
-    isLoading: !data && !error,
+    isLoading,
     isError: !!error,
-    mutate, // expose for manual refresh if needed
+    mutate,
   };
 }
 
-/* SERVICES */
+/* SERVICES – unchanged (working hai to mat chhedo) */
 export function useServices() {
   const { data, error } = useSWR("/services/", fetcher, swrCommonOptions);
   return {
@@ -56,7 +82,7 @@ export function useService(slug) {
   };
 }
 
-/* BLOGS - similar pattern */
+/* BLOGS – unchanged */
 export function useBlogs() {
   const { data, error } = useSWR("/blogs/", fetcher, swrCommonOptions);
   return {
@@ -75,11 +101,11 @@ export function useBlog(slug) {
   };
 }
 
-/* PATCH REQUESTS (ADMIN) - no-store + retry limited */
+/* PATCH REQUESTS (ADMIN) – unchanged */
 export function usePatchRequests() {
   const { data, error } = useSWR("/patch-requests/list/", adminFetch, {
     ...swrCommonOptions,
-    revalidateOnFocus: true, // admin can refresh on focus
+    revalidateOnFocus: true,
   });
   return {
     patches: (data ?? []).map(normalizePatchRequest).filter(Boolean),

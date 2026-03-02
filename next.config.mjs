@@ -1,42 +1,28 @@
+// project/frontend/next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 
-  // Keep metadataBase – valid in Next.js 15 & fixes absolute URLs for OG/canonical tags
+  // ✅ Keep metadataBase – valid in Next.js 15 for absolute URLs in OG/canonical
   metadataBase: new URL('https://northernpatches.com'),
 
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [360, 390, 430, 640, 768, 1024, 1280, 1536, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512, 640, 828, 1080],
-    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days – excellent for media
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'northernpatches.com',
-        pathname: '/media/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'www.northernpatches.com',
-        pathname: '/media/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'django_backend',
-        port: '8000',
-        pathname: '/media/**',
-      },
+      { protocol: 'https', hostname: 'northernpatches.com', pathname: '/media/**' },
+      { protocol: 'https', hostname: 'www.northernpatches.com', pathname: '/media/**' },
+      { protocol: 'http', hostname: 'django_backend', port: '8000', pathname: '/media/**' },
     ],
-    // trailingSlash removed – invalid inside images object in Next.js 14+
   },
 
-  output: 'standalone',
+  output: 'standalone', // ✅ ensures build is portable
 
   experimental: {
     scrollRestoration: true,
     optimizePackageImports: ['framer-motion', 'swiper', 'lucide-react', 'react-icons'],
-    // optimizeCss removed – deprecated
   },
 
   poweredByHeader: false,
