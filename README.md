@@ -6,59 +6,58 @@ This application handles public website pages, dynamic content rendering, and AP
 
 ## Tech Stack
 
-- Next.js (App Router)
-- React
-- JavaScript (ES6+)
-- TailwindCSS
-- Axios / Fetch API
-- ESLint
-- Prettier
+| Layer | Technology |
+|-------|------------|
+| Frontend Framework | Next.js (App Router) |
+| UI Library | React |
+| Language | JavaScript (ES6+) |
+| Styling | TailwindCSS |
+| API Requests | Axios / Fetch API |
+| Code Quality | ESLint, Prettier |
 
 ## Project Structure
 
 patchesAmerica-frontend/
-├── public/                     # Static assets (images, icons, fonts)
-│
-├── src/
-│   ├── app/                    # Next.js App Router (pages & layouts)
-│   │   ├── layout.js
-│   │   ├── page.js
-│   │   └── (routes)/
-│   │
-│   ├── components/             # Reusable UI components
-│   │   ├── ui/                 # Base components (Button, Card, Modal)
-│   │   ├── forms/              # Form components
-│   │   └── layout/             # Layout components (Navbar, Footer)
-│   │
-│   ├── lib/                    # Core libraries (API config, constants)
-│   │   └── api.js
-│   │
-│   ├── hooks/                  # Custom React hooks
-│   │
-│   ├── services/               # API abstraction layer
-│   │   ├── auth.service.js
-│   │   └── product.service.js
-│   │
-│   ├── utils/                  # Utility/helper functions
-│   │
-│   ├── styles/                 # Global styles
-│   │   └── globals.css
-│   │
-│   └── config/                 # Environment-based configuration
-│
-├── .env.example                # Environment variable template
-├── .gitignore
-├── .eslintrc.json
-├── .prettierrc
-├── next.config.js
-├── package.json
-└── README.md
+- public/
+  - images/
+  - icons/
+  - favicon.ico
+- src/
+  - app/
+    - layout.js
+    - page.js
+    - (routes)/
+  - components/
+    - ui/
+    - forms/
+    - layout/
+  - lib/
+    - api.js
+    - constants.js
+  - hooks/
+  - services/
+    - auth.service.js
+    - product.service.js
+  - utils/
+  - styles/
+    - globals.css
+  - config/
+    - appConfig.js
+- .env.example
+- .gitignore
+- .eslintrc.json
+- .prettierrc
+- next.config.js
+- package.json
+- README.md
 
 ## Installation
 
-Clone the repository:
+1. Clone the repository:
 
-git clone https://github.com/muhammadshehzore01/patchesAmerica-frontend.git⁠� cd patchesAmerica-frontend
+```bash
+git clone https://github.com/muhammadshehzore01/patchesAmerica-frontend.git
+cd patchesAmerica-frontend
 
 Install dependencies:
 
